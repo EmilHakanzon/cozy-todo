@@ -1,18 +1,29 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { useAppTheme } from '@/hooks/use-app-theme'
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router'
+import { useEffect } from 'react'
+import { bootstrapApp } from '@/lib/bootstrap-app'
+import { useListStore } from '@/stores/list-store';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 
-SplashScreen.preventAutoHideAsync();
+export default function RootLayout() {
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+  const hasHydrated = useListStore(
+    (state) => state.hasHydrated,
   );
+
+  useEffect(() => {
+
+    if (!hasHydrated) {
+      return;
+    }
+
+    bootstrapApp();
+  }, [hasHydrated])
+  const { resolvedTheme } = useAppTheme()
+
+  return (
+    <ThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack />
+    </ThemeProvider>
+  )
 }

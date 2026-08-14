@@ -42,7 +42,7 @@
   },
   "scripts": {
     "dev": "expo start --dev-client --tunnel",
-    "dev:usb": "adb reverse tcp:8081 tcp:8081 && expo start --dev-client",
+    "dev:adb": "adb reverse tcp:8081 tcp:8081 && expo start --dev-client",
     "dev:clear": "expo start --dev-client --tunnel --clear",
     "build:dev": "eas build --profile development --platform android",
     "fingerprint": "node ./scripts/fingerprint.mjs",

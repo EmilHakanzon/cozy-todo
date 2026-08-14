@@ -1,0 +1,240 @@
+import { create } from 'zustand'
+
+import type { Todo, TodoId, TodoListId } from '@/features/todos/types'
+import { getDescendantIds, isDescendant } from '@/features/todos/todo-tree'
+import { createId } from '@/lib/create-id'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { createJSONStorage, persist } from 'zustand/middleware'
+
+
+type CreateTodoInput = {
+  listId: TodoListId
+  parentId?: TodoId | null
+  title: string
+  notes?: string
+  dueAt?: string | null
+}
+type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt'>>
+
+type TodoState = {
+  todosById: Record<TodoId, Todo>
+  createTodo: (input: CreateTodoInput) => TodoId
+  updateTodo: (id: TodoId, input: UpdateTodoInput) => void
+  toggleTodo: (id: TodoId) => void
+  deleteTodo: (id: TodoId) => void
+  moveTodo: (ind: TodoId,targetParentId: TodoId | null) => void;
+}
+
+export const useTodoStore = create<TodoState>()(
+  persist(
+    (set, get) => ({
+  todosById: {},
+    
+
+  createTodo: (input) => {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('Todo title cannot be empty')
+    }
+
+    const parentId = input.parentId ?? null
+
+    if (parentId) {
+      const parent = get().todosById[parentId]
+
+      if (!parent) {
+        throw new Error('Parent todo does not exist')
+      }
+
+      if (parent.listId !== input.listId) {
+        throw new Error('Parent and child must belong to the same list')
+      }
+    }
+
+    const now = new Date().toISOString()
+    const id = createId()
+
+    const siblings = Object.values(get().todosById).filter(
+      (todo) => todo.listId === input.listId && todo.parentId === parentId
+    )
+
+    const position =
+      siblings.length === 0 ? 0 : Math.max(...siblings.map((todo) => todo.position)) + 1
+
+    const todo: Todo = {
+      id,
+      listId: input.listId,
+      parentId,
+
+      title,
+      notes: input.notes?.trim() ?? '',
+
+      dueAt: input.dueAt ?? null,
+      completedAt: null,
+
+      position,
+
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    set((state) => ({
+      todosById: {
+        ...state.todosById,
+        [id]: todo,
+      },
+    }))
+
+    return id
+  },
+  updateTodo: (id, input) => {
+    const existing = get().todosById[id]
+
+    if (!existing) {
+      throw new Error('Todo does not exist')
+    }
+
+    const nextTitle = input.title !== undefined ? input.title.trim() : existing.title
+
+    if (!nextTitle) {
+      throw new Error('Todo title cannot be empty')
+    }
+
+    const updateTodo: Todo = {
+      ...existing,
+      ...input,
+      title: nextTitle,
+      notes: input.notes !== undefined ? input.notes.trim() : existing.notes,
+      updatedAt: new Date().toISOString(),
+    }
+
+    set((state) => ({
+      todosById: {
+        ...state.todosById,
+        [id]: updateTodo,
+      },
+    }))
+  },
+  toggleTodo: (id) => {
+    const existing = get().todosById[id]
+
+    if (!existing) {
+      throw new Error('Todo does not exist')
+    }
+
+    const now = new Date().toISOString()
+    const updateTodo: Todo = {
+      ...existing,
+      completedAt: existing.completedAt ? null : now,
+      updatedAt: now,
+    }
+    set((state) => ({
+      todosById: {
+        ...state.todosById,
+        [id]: updateTodo,
+      },
+    }))
+  },
+  deleteTodo: (id) => {
+    const todosById = get().todosById
+
+    if (!todosById[id]) {
+      throw new Error('Todo does not exist')
+    }
+
+    const descendantIds = getDescendantIds(todosById, id)
+
+    const idsToDelete = new Set([id, ...descendantIds])
+
+    set((state) => {
+      const nextTodoById = Object.fromEntries(
+        Object.entries(state.todosById).filter(([todoId]) => !idsToDelete.has(todoId))
+      )
+
+      return {
+        todosById: nextTodoById,
+      }
+    })
+  },
+  moveTodo: (id, targetParentId) => {
+    const todosById = get().todosById
+    const todo = todosById[id]
+
+    if (!todo) {
+      throw new Error('Todo does not exist')
+    }
+
+    if (targetParentId === id) {
+      throw new Error('Todo cannot be its own parent')
+    }
+
+    let targetListId = todo.listId
+
+    if (targetParentId) {
+      const targetParent = todosById[targetParentId]
+
+      if (!targetParent) {
+        throw new Error('Target parent does not exist')
+      }
+
+      if (isDescendant(todosById, id, targetParentId)) {
+        throw new Error('Cannot move todo into its own descendant')
+      }
+
+      targetListId = targetParent.listId
+    }
+
+    const siblings = Object.values(todosById).filter(
+      (candidate) =>
+        candidate.id !== id &&
+        candidate.listId === targetListId &&
+        candidate.parentId === targetParentId
+    )
+
+    const nextPosition =
+      siblings.length === 0 ? 0 : Math.max(...siblings.map((item) => item.position)) + 1
+
+    const now = new Date().toISOString()
+
+    const descendantIds = getDescendantIds(todosById, id)
+
+    set((state) => {
+      const nextTodosById = {
+        ...state.todosById,
+      }
+
+      nextTodosById[id] = {
+        ...todo,
+        parentId: targetParentId,
+        listId: targetListId,
+        position: nextPosition,
+        updatedAt: now,
+      }
+
+      for (const descendantId of descendantIds) {
+        const descendant = nextTodosById[descendantId]
+
+        nextTodosById[descendantId] = {
+          ...descendant,
+          listId: targetListId,
+          updatedAt: now,
+        }
+      }
+
+      return {
+        todosById: nextTodosById,
+      }
+    })
+  }
+}),
+ {
+    name:'todo',
+    storage: createJSONStorage(() => AsyncStorage),
+    partialize: (state) => ({
+      todosById: state.todosById,
+    }),
+    version: 1,
+  }
+  )
+)
