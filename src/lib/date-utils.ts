@@ -102,3 +102,28 @@ export function formatTime(isoString: string, format: TimeFormat = '24h'): strin
     hour12: format === '12h',
   })
 }
+
+export function isDateOnly(isoString: string): boolean {
+  return isoString.endsWith('T00:00:00.000Z')
+}
+
+export type DueUrgency = 'overdue' | 'dueSoon' | 'normal'
+
+export function getDueUrgency(dueAt: string, completed: boolean): DueUrgency {
+  if (completed) return 'normal'
+  const now = new Date()
+  const dateOnly = isDateOnly(dueAt)
+
+  if (dateOnly) {
+    const todayStr = toDateString(now)
+    const dueStr = dueAt.split('T')[0]
+    if (dueStr < todayStr) return 'overdue'
+    if (dueStr === todayStr) return 'dueSoon'
+    return 'normal'
+  }
+
+  const dueDate = new Date(dueAt)
+  if (dueDate < now) return 'overdue'
+  if (dueDate.getTime() - now.getTime() < 60 * 60 * 1000) return 'dueSoon'
+  return 'normal'
+}

@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
+import { FlatList } from 'react-native-gesture-handler'
 
 import { InlineQuickAdd } from '@/components/quick-add'
 import { ScreenHeader } from '@/components/screen-header'
@@ -15,6 +16,7 @@ import {
   getUpcomingTodos,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useWeather } from '@/hooks/use-weather'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
@@ -49,6 +51,7 @@ export default function TodayScreen() {
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const defaultView = useSettingsStore((s) => s.defaultView)
+  const weather = useWeather()
   const [filter, setFilter] = useState<Filter>(
     defaultView === 'today' || defaultView === 'upcoming' ? defaultView : 'today',
   )
@@ -79,6 +82,10 @@ export default function TodayScreen() {
     month: 'long',
     day: 'numeric',
   })
+
+  const weatherStr = weather.status === 'success'
+    ? `${weather.data.icon} ${weather.data.temperature}°  ·  ${weather.data.description}`
+    : ''
 
   const sections: SectionItem[] = [
     ...(activeTodos.length > 0
@@ -119,6 +126,14 @@ export default function TodayScreen() {
           </View>
         }
       />
+
+      {weatherStr !== '' && (
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md }}>
+          <Text style={{ ...typography.meta, color: theme.color.text2 }}>
+            {weatherStr}
+          </Text>
+        </View>
+      )}
 
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}>
         <SegmentedControl segments={SEGMENTS} value={filter} onChange={setFilter} />

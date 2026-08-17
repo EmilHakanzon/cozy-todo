@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
+import { FlatList } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'

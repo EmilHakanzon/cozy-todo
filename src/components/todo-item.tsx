@@ -2,7 +2,9 @@ import { Pressable, Text, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { formatTime, getDueUrgency, isDateOnly } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { getTodoProgress } from '@/features/todos/selectors'
 import { getChildren } from '@/features/todos/todo-tree'
@@ -26,6 +28,7 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
   const { theme, resolvedTheme } = useAppTheme()
   const list = useListStore((s) => s.listsById[todo.listId])
   const todosById = useTodoStore((s) => s.todosById)
+  const timeFormat = useSettingsStore((s) => s.timeFormat)
   const children = getChildren(todosById, todo.id)
   const isCompleted = todo.completedAt !== null
   const hasChildren = children.length > 0
@@ -33,17 +36,38 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
   const listColors = listColorsFor(resolvedTheme)
   const listColor = list ? listColors[list.color] : null
 
+  const urgency = todo.dueAt ? getDueUrgency(todo.dueAt, isCompleted) : 'normal'
+
   const metaParts: string[] = []
   if (showListName && list) metaParts.push(list.name)
   if (todo.dueAt) {
-    const date = new Date(todo.dueAt)
-    const today = new Date()
-    const isToday =
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth() &&
-      date.getDate() === today.getDate()
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    metaParts.push(isToday ? `Today · ${timeStr}` : date.toLocaleDateString())
+    const dueDate = new Date(todo.dueAt)
+    const now = new Date()
+    const isSameDay =
+      dueDate.getFullYear() === now.getFullYear() &&
+      dueDate.getMonth() === now.getMonth() &&
+      dueDate.getDate() === now.getDate()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const isTomorrow =
+      dueDate.getFullYear() === tomorrow.getFullYear() &&
+      dueDate.getMonth() === tomorrow.getMonth() &&
+      dueDate.getDate() === tomorrow.getDate()
+    const hasTime = !isDateOnly(todo.dueAt)
+    const timeStr = hasTime ? formatTime(todo.dueAt, timeFormat) : ''
+
+    let dateLabel: string
+    if (isSameDay) dateLabel = 'Today'
+    else if (isTomorrow) dateLabel = 'Tomorrow'
+    else dateLabel = dueDate.toLocaleDateString()
+
+    if (urgency === 'overdue') {
+      metaParts.push(`Overdue · ${dateLabel}${hasTime ? ` · ${timeStr}` : ''}`)
+    } else if (urgency === 'dueSoon') {
+      metaParts.push(hasTime ? `Due soon · ${timeStr}` : `Today`)
+    } else {
+      metaParts.push(`${dateLabel}${hasTime ? ` · ${timeStr}` : ''}`)
+    }
   }
   if (hasChildren) {
     const progress = getTodoProgress(todosById, todo.id)
@@ -86,7 +110,7 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
                 }}
               />
             )}
-            <Text style={{ ...typography.meta, color: theme.color.text2 }}>
+            <Text style={{ ...typography.meta, color: urgency === 'overdue' ? theme.color.overdue : urgency === 'dueSoon' ? theme.color.dueSoon : theme.color.text2 }}>
               {metaParts.join(' · ')}
             </Text>
             {todo.recurrence && (

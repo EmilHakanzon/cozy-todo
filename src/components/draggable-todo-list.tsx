@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { View } from 'react-native'
-import * as Haptics from 'expo-haptics'
 import { SymbolView } from 'expo-symbols'
 import Animated, {
   useSharedValue,
@@ -11,6 +10,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { selection } from '@/lib/haptics'
 
 import type { ReactNode } from 'react'
 import type { SymbolViewProps } from 'expo-symbols'
@@ -57,7 +57,7 @@ function DraggableItem({
     .onStart(() => {
       isActive.value = true
       runOnJS(onDragStart)()
-      runOnJS(Haptics.selectionAsync)()
+      runOnJS(selection)()
     })
     .onUpdate((event) => {
       translateY.value = event.translationY

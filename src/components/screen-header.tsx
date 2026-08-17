@@ -20,7 +20,7 @@ export function ScreenHeader({ title, subtitle, rightAction }: ScreenHeaderProps
       style={{
         paddingTop: insets.top + theme.spacing.md,
         paddingHorizontal: theme.spacing.lg,
-        paddingBottom: theme.spacing.md,
+        paddingBottom: theme.spacing.xs,
         backgroundColor: theme.color.background,
       }}
     >

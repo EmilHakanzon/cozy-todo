@@ -7,6 +7,8 @@ export const lightColors = {
   border: '#e3e1da',
   accent: '#525b57',
   accentSoft: '#dde6dc',
+  overdue: '#c25b4a',
+  dueSoon: '#c49032',
 } as const;
 
 export const darkColors = {
@@ -18,4 +20,6 @@ export const darkColors = {
   border: '#34372f',
   accent: '#91aa91',
   accentSoft: '#303c31',
+  overdue: '#e07a6a',
+  dueSoon: '#e0a850',
 } as const;

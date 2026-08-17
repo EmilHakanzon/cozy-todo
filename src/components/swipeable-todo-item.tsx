@@ -1,6 +1,5 @@
 import { useRef, useCallback } from 'react'
-import { Alert, Pressable, Text, View } from 'react-native'
-import * as Haptics from 'expo-haptics'
+import { Alert, Text, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 import ReanimatedSwipeable, {
   type SwipeableMethods,
@@ -8,6 +7,7 @@ import ReanimatedSwipeable, {
 
 import { TodoItem } from './todo-item'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { impactMedium, notificationWarning } from '@/lib/haptics'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
@@ -51,7 +51,7 @@ export function SwipeableTodoItem({
   const isCompleted = todo.completedAt !== null
 
   const handleDelete = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+    notificationWarning()
     Alert.alert('Delete Task', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
       {
@@ -62,16 +62,15 @@ export function SwipeableTodoItem({
     ])
   }, [todo.id, deleteTodo])
 
-  const handleToggle = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+  const handleSwipeToggle = useCallback(() => {
+    impactMedium()
     onToggle(todo.id)
     swipeableRef.current?.close()
   }, [todo.id, onToggle])
 
   const renderLeftActions = useCallback(
     (_progress: SharedValue<number>, _drag: SharedValue<number>) => (
-      <Pressable
-        onPress={handleToggle}
+      <View
         style={{
           backgroundColor: isCompleted ? theme.color.accent : '#4CAF50',
           justifyContent: 'center',
@@ -96,15 +95,14 @@ export function SwipeableTodoItem({
         >
           {isCompleted ? 'Undo' : 'Done'}
         </Text>
-      </Pressable>
+      </View>
     ),
-    [isCompleted, handleToggle, theme],
+    [isCompleted, theme],
   )
 
   const renderRightActions = useCallback(
     (_progress: SharedValue<number>, _drag: SharedValue<number>) => (
-      <Pressable
-        onPress={handleDelete}
+      <View
         style={{
           backgroundColor: '#D32F2F',
           justifyContent: 'center',
@@ -125,9 +123,20 @@ export function SwipeableTodoItem({
         >
           Delete
         </Text>
-      </Pressable>
+      </View>
     ),
-    [handleDelete, theme],
+    [theme],
+  )
+
+  const handleSwipeableOpen = useCallback(
+    (direction: 'left' | 'right') => {
+      if (direction === 'right') {
+        handleSwipeToggle()
+      } else {
+        handleDelete()
+      }
+    },
+    [handleSwipeToggle, handleDelete],
   )
 
   return (
@@ -135,10 +144,11 @@ export function SwipeableTodoItem({
       ref={swipeableRef}
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
-      leftThreshold={40}
-      rightThreshold={40}
+      leftThreshold={60}
+      rightThreshold={60}
       overshootLeft={false}
       overshootRight={false}
+      onSwipeableOpen={handleSwipeableOpen}
     >
       <View style={{ backgroundColor: theme.color.background }}>
         <TodoItem

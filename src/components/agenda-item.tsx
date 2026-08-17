@@ -4,7 +4,7 @@ import { TodoCheckbox } from './todo-checkbox'
 import { getTodoProgress } from '@/features/todos/selectors'
 import { getChildren } from '@/features/todos/todo-tree'
 import { useAppTheme } from '@/hooks/use-app-theme'
-import { formatTime } from '@/lib/date-utils'
+import { formatTime, getDueUrgency } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
@@ -30,6 +30,7 @@ export function AgendaItem({ todo, onToggle }: AgendaItemProps) {
   const listColors = listColorsFor(resolvedTheme)
   const listColor = list ? listColors[list.color] : null
 
+  const urgency = todo.dueAt ? getDueUrgency(todo.dueAt, isCompleted) : 'normal'
   const timeStr = todo.dueAt ? formatTime(todo.dueAt, timeFormat) : ''
 
   return (
@@ -45,10 +46,10 @@ export function AgendaItem({ todo, onToggle }: AgendaItemProps) {
           style={{
             ...typography.meta,
             fontFamily: 'Manrope_500Medium',
-            color: theme.color.text2,
+            color: urgency === 'overdue' ? theme.color.overdue : urgency === 'dueSoon' ? theme.color.dueSoon : theme.color.text2,
           }}
         >
-          {timeStr}
+          {urgency === 'overdue' ? 'Overdue' : urgency === 'dueSoon' ? 'Due soon' : timeStr}
         </Text>
       </View>
 

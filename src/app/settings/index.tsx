@@ -26,6 +26,7 @@ const ICONS = {
   language: { ios: 'globe', android: 'language', web: 'language' } as SymbolViewProps['name'],
   calendar: { ios: 'calendar.badge.plus', android: 'event', web: 'event' } as SymbolViewProps['name'],
   import: { ios: 'square.and.arrow.down', android: 'download', web: 'download' } as SymbolViewProps['name'],
+  weather: { ios: 'cloud.sun', android: 'partly_cloudy_day', web: 'partly_cloudy_day' } as SymbolViewProps['name'],
   reminders: { ios: 'bell', android: 'notifications', web: 'notifications' } as SymbolViewProps['name'],
   dailyPlan: { ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' } as SymbolViewProps['name'],
   sound: { ios: 'speaker.wave.2', android: 'volume_up', web: 'volume_up' } as SymbolViewProps['name'],
@@ -59,7 +60,7 @@ export default function SettingsScreen() {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const themePreference = useThemeStore((s) => s.preference)
-  const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled } = useSettingsStore()
+  const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled, weatherEnabled, weatherCity } = useSettingsStore()
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -120,6 +121,12 @@ export default function SettingsScreen() {
           label="Default view"
           value={VIEW_LABELS[defaultView]}
           onPress={() => router.push('/settings/default-view')}
+        />
+        <SettingsRow
+          icon={ICONS.weather}
+          label="Weather"
+          value={weatherEnabled ? (weatherCity || 'Auto') : 'Off'}
+          onPress={() => router.push('/settings/weather')}
         />
         <SettingsRow
           icon={ICONS.language}

@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { useState, useMemo, useCallback } from 'react'
+import { Pressable, Text, View } from 'react-native'
+import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
+import { FlatList } from 'react-native-gesture-handler'
 
 import { AgendaItem } from '@/components/agenda-item'
 import { DateRangeNav } from '@/components/date-range-nav'
@@ -9,6 +11,7 @@ import { InlineQuickAdd } from '@/components/quick-add'
 import { MonthCalendar } from '@/components/month-calendar'
 import { ScreenHeader } from '@/components/screen-header'
 import { SegmentedControl } from '@/components/segmented-control'
+import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { TimeGrid } from '@/components/time-grid'
 import {
   buildAgendaSections,
@@ -26,8 +29,13 @@ import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
+import type { Todo } from '@/features/todos/types'
 
 type UpcomingView = 'agenda' | 'day' | 'week' | 'month'
+
+type MonthListItem =
+  | { kind: 'summary'; dateStr: string; label: string; count: number }
+  | { kind: 'todo'; todo: Todo }
 
 const VIEW_SEGMENTS = [
   { key: 'agenda' as const, label: 'Agenda' },
@@ -113,6 +121,16 @@ export default function UpcomingScreen() {
       })
   }, [monthTodos])
 
+  const selectedMonthDayTodos = useMemo(() => {
+    if (!month.selectedMonthDay) return []
+    return getTodosForDate(todosById, toDateString(month.selectedMonthDay))
+  }, [todosById, month.selectedMonthDay])
+
+  const handleTodoPress = useCallback(
+    (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
+    [],
+  )
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
       <ScreenHeader title="Upcoming" />
@@ -187,45 +205,85 @@ export default function UpcomingScreen() {
         />
       )}
 
-      {view === 'month' && (
-        <FlatList
-          data={monthDaySummaries}
-          keyExtractor={(item) => item.dateStr}
-          contentContainerStyle={{
-            paddingHorizontal: theme.spacing.lg,
-            paddingBottom: 120,
-          }}
-          ListHeaderComponent={
-            <View>
-              <DateRangeNav
-                label={month.monthLabel}
-                onPrev={month.navigateMonthPrev}
-                onNext={month.navigateMonthNext}
-                onToday={month.navigateMonthToday}
-              />
-              <MonthCalendar
-                year={month.monthDate.getFullYear()}
-                month={month.monthDate.getMonth()}
-                selectedDate={month.selectedMonthDay}
-                taskDots={monthTaskDots}
-                onSelectDate={month.setSelectedMonthDay}
-                firstDayOfWeek={firstDayOfWeek}
-              />
-            </View>
-          }
-          renderItem={({ item }) => (
-            <MonthDaySummaryRow
-              label={item.label}
-              count={item.count}
-              onPress={() => {
-                const date = new Date(item.dateStr + 'T00:00:00')
-                month.setSelectedMonthDay(date)
-              }}
-            />
-          )}
-          ListEmptyComponent={<EmptyState message="No tasks this month" />}
-        />
-      )}
+      {view === 'month' && (() => {
+        const monthListItems: MonthListItem[] = month.selectedMonthDay
+          ? selectedMonthDayTodos.map((todo) => ({ kind: 'todo', todo }))
+          : monthDaySummaries.map((s) => ({ kind: 'summary', ...s }))
+
+        return (
+          <FlatList
+            data={monthListItems}
+            keyExtractor={(item) => (item.kind === 'summary' ? item.dateStr : item.todo.id)}
+            contentContainerStyle={{
+              paddingHorizontal: theme.spacing.lg,
+              paddingBottom: 120,
+            }}
+            ListHeaderComponent={
+              <View>
+                <DateRangeNav
+                  label={month.monthLabel}
+                  onPrev={month.navigateMonthPrev}
+                  onNext={month.navigateMonthNext}
+                  onToday={month.navigateMonthToday}
+                />
+                <MonthCalendar
+                  year={month.monthDate.getFullYear()}
+                  month={month.monthDate.getMonth()}
+                  selectedDate={month.selectedMonthDay}
+                  taskDots={monthTaskDots}
+                  onSelectDate={month.setSelectedMonthDay}
+                  firstDayOfWeek={firstDayOfWeek}
+                />
+                {month.selectedMonthDay && (
+                  <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingTop: theme.spacing.md,
+                    paddingBottom: theme.spacing.xs,
+                  }}>
+                    <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
+                      {month.selectedMonthDay.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                      }).toUpperCase()}
+                    </Text>
+                    <Pressable onPress={() => month.setSelectedMonthDay(null)}>
+                      <Text style={{ ...typography.meta, color: theme.color.accent }}>Show all</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            }
+            renderItem={({ item }) => {
+              if (item.kind === 'summary') {
+                return (
+                  <MonthDaySummaryRow
+                    label={item.label}
+                    count={item.count}
+                    onPress={() => {
+                      const date = new Date(item.dateStr + 'T00:00:00')
+                      month.setSelectedMonthDay(date)
+                    }}
+                  />
+                )
+              }
+              return (
+                <SwipeableTodoItem
+                  todo={item.todo}
+                  onToggle={toggleTodo}
+                  onPress={handleTodoPress}
+                  showListName
+                />
+              )
+            }}
+            ListEmptyComponent={
+              <EmptyState message={month.selectedMonthDay ? 'No tasks for this day' : 'No tasks this month'} />
+            }
+          />
+        )
+      })()}
     </View>
   )
 }

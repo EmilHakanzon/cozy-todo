@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal,Text, TextInput,View,Pressable } from "react-native";
+import { Modal,ScrollView,Text, TextInput,View,Pressable } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import type { TodoListColor } from "@/features/lists/types";
 import { ListColorPicker } from "@/components/list-color-picker";
@@ -13,6 +14,7 @@ type CreateListSheetProps = {
 
 export function CreateListSheet({visible,onClose}: CreateListSheetProps) {
   const {theme} = useAppTheme();
+  const insets = useSafeAreaInsets();
   const createList = useListStore((state) => state.createList,);
 
   const [name, setName] = useState('');
@@ -51,16 +53,25 @@ export function CreateListSheet({visible,onClose}: CreateListSheetProps) {
           borderTopLeftRadius: theme.radius.xl,
           borderTopRightRadius:theme.radius.xl,
           padding:theme.spacing.lg,
+          paddingBottom: insets.bottom + theme.spacing.lg,
           gap:theme.spacing.lg,
         }}>
-          {/*sheet content */}
-          <View>
-            <Text style={{color:theme.color.text,fontSize: 22,fontWeight: '600',}}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Pressable onPress={handleClose}>
+              <Text style={{color:theme.color.text2, fontSize:16}}>Cancel</Text>
+            </Pressable>
+            <Text style={{color:theme.color.text, fontSize: 18, fontWeight: '600'}}>
               Create List
             </Text>
-            <Text style={{color:theme.color.text2, fontSize:14, marginTop: theme.spacing.xs,}}>
-              Give your list a name and color
-            </Text>
+            <Pressable onPress={handleCreate} disabled={!canSubmit}>
+              <Text style={{
+                color: canSubmit ? theme.color.accent : theme.color.text2,
+                fontSize:16,
+                fontWeight: '600',
+              }}>
+                Create
+              </Text>
+            </Pressable>
           </View>
 
           <View style={{gap:theme.spacing.xs,}}>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router'
 
@@ -13,8 +13,10 @@ import { typography } from '@/themes/typography'
 
 export default function ListsScreen() {
   const { theme } = useAppTheme()
-  const lists = useListStore((s) => Object.values(s.listsById))
+  const listsById = useListStore((s) => s.listsById)
   const todosById = useTodoStore((s) => s.todosById)
+
+  const lists = useMemo(() => Object.values(listsById), [listsById])
   const [showCreateSheet, setShowCreateSheet] = useState(false)
 
   const totalTasks = useMemo(

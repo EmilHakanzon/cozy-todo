@@ -2,13 +2,13 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import {
   Alert,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
+import { ScrollView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DateTimePicker } from '@/components/date-time-picker'
@@ -24,6 +24,7 @@ import { getChildren } from '@/features/todos/todo-tree'
 import { getTodoProgress } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useListStore } from '@/stores/list-store'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
@@ -69,6 +70,7 @@ export default function TodoDetailScreen() {
   const deleteTodo = useTodoStore((s) => s.deleteTodo)
   const changeList = useTodoStore((s) => s.changeList)
   const list = useListStore((s) => (todo ? s.listsById[todo.listId] : undefined))
+  const timeFormat = useSettingsStore((s) => s.timeFormat)
 
   const [title, setTitle] = useState(todo?.title ?? '')
   const [notes, setNotes] = useState(todo?.notes ?? '')
@@ -179,7 +181,7 @@ export default function TodoDetailScreen() {
   const isCompleted = todo.completedAt !== null
 
   const recurrenceLabel = formatRecurrenceLabel(todo.recurrence)
-  const dueLabel = formatDueLabel(todo.dueAt)
+  const dueLabel = formatDueLabel(todo.dueAt, timeFormat)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>

@@ -1,12 +1,37 @@
-import * as Notifications from 'expo-notifications'
-
 import type { Todo, TodoId } from '@/features/todos/types'
+
+function getNotifications() {
+  try {
+    return require('expo-notifications') as typeof import('expo-notifications')
+  } catch {
+    return null
+  }
+}
 
 function notificationId(todoId: TodoId): string {
   return `todo-${todoId}`
 }
 
+export function setupNotificationHandler(): void {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    })
+  } catch {}
+}
+
 export async function requestNotificationPermission(): Promise<boolean> {
+  const Notifications = getNotifications()
+  if (!Notifications) return false
+
   const { status: existing } = await Notifications.getPermissionsAsync()
   if (existing === 'granted') return true
 
@@ -15,6 +40,9 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 export async function scheduleTodoReminder(todo: Todo): Promise<void> {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
   if (!todo.dueAt) return
 
   const triggerDate = new Date(todo.dueAt)
@@ -37,10 +65,16 @@ export async function scheduleTodoReminder(todo: Todo): Promise<void> {
 }
 
 export async function cancelTodoReminder(todoId: TodoId): Promise<void> {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
   await Notifications.cancelScheduledNotificationAsync(notificationId(todoId))
 }
 
 export async function cancelAllReminders(): Promise<void> {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
   await Notifications.cancelAllScheduledNotificationsAsync()
 }
 
