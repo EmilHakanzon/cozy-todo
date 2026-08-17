@@ -107,19 +107,19 @@ export default function SettingsScreen() {
           icon={ICONS.firstDay}
           label="First day of week"
           value={DAY_LABELS[firstDayOfWeek]}
-          disabled
+          onPress={() => router.push('/settings/first-day')}
         />
         <SettingsRow
           icon={ICONS.timeFormat}
           label="Time format"
           value={TIME_LABELS[timeFormat]}
-          disabled
+          onPress={() => router.push('/settings/time-format')}
         />
         <SettingsRow
           icon={ICONS.defaultView}
           label="Default view"
           value={VIEW_LABELS[defaultView]}
-          disabled
+          onPress={() => router.push('/settings/default-view')}
         />
         <SettingsRow
           icon={ICONS.language}

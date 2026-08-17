@@ -6,6 +6,7 @@ import { getChildren } from '@/features/todos/todo-tree'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { formatTime } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
@@ -21,6 +22,7 @@ export function AgendaItem({ todo, onToggle }: AgendaItemProps) {
   const { theme, resolvedTheme } = useAppTheme()
   const list = useListStore((s) => s.listsById[todo.listId])
   const todosById = useTodoStore((s) => s.todosById)
+  const timeFormat = useSettingsStore((s) => s.timeFormat)
   const children = getChildren(todosById, todo.id)
   const isCompleted = todo.completedAt !== null
   const hasChildren = children.length > 0
@@ -28,7 +30,7 @@ export function AgendaItem({ todo, onToggle }: AgendaItemProps) {
   const listColors = listColorsFor(resolvedTheme)
   const listColor = list ? listColors[list.color] : null
 
-  const timeStr = todo.dueAt ? formatTime(todo.dueAt) : ''
+  const timeStr = todo.dueAt ? formatTime(todo.dueAt, timeFormat) : ''
 
   return (
     <View

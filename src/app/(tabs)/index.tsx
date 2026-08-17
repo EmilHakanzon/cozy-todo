@@ -15,6 +15,7 @@ import {
   getUpcomingTodos,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
@@ -47,7 +48,10 @@ export default function TodayScreen() {
   const { theme } = useAppTheme()
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
-  const [filter, setFilter] = useState<Filter>('today')
+  const defaultView = useSettingsStore((s) => s.defaultView)
+  const [filter, setFilter] = useState<Filter>(
+    defaultView === 'today' || defaultView === 'upcoming' ? defaultView : 'today',
+  )
 
   const handleTodoPress = useCallback(
     (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),

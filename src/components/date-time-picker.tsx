@@ -14,6 +14,7 @@ import { MonthCalendar } from './month-calendar'
 import { SegmentedControl } from './segmented-control'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { toDateString } from '@/lib/date-utils'
+import { useSettingsStore } from '@/stores/settings-store'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
@@ -45,6 +46,7 @@ export function DateTimePicker({
   onCancel,
 }: DateTimePickerProps) {
   const { theme } = useAppTheme()
+  const firstDayOfWeek = useSettingsStore((s) => s.firstDayOfWeek)
   const [tab, setTab] = useState<PickerTab>('date')
 
   const parsed = useMemo(() => {
@@ -170,6 +172,7 @@ export function DateTimePicker({
                 selectedDate={selectedDate}
                 taskDots={taskDots}
                 onSelectDate={setSelectedDate}
+                firstDayOfWeek={firstDayOfWeek}
               />
             </View>
           )}

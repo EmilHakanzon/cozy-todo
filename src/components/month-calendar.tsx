@@ -4,15 +4,28 @@ import { useAppTheme } from '@/hooks/use-app-theme'
 import { isSameDay, isToday } from '@/lib/date-utils'
 import { typography } from '@/themes/typography'
 
+import type { FirstDayOfWeek } from '@/stores/settings-store'
+
 type MonthCalendarProps = {
   year: number
   month: number
   selectedDate: Date | null
   taskDots: Map<string, number>
   onSelectDate: (date: Date) => void
+  firstDayOfWeek?: FirstDayOfWeek
 }
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function getWeekdayHeaders(firstDay: FirstDayOfWeek): string[] {
+  const start = firstDay === 'sunday' ? 0 : 1
+  return Array.from({ length: 7 }, (_, i) => WEEKDAY_NAMES[(start + i) % 7])
+}
+
+function getStartOffset(dayOfWeek: number, firstDay: FirstDayOfWeek): number {
+  const start = firstDay === 'sunday' ? 0 : 1
+  return (dayOfWeek - start + 7) % 7
+}
 
 export function MonthCalendar({
   year,
@@ -20,14 +33,14 @@ export function MonthCalendar({
   selectedDate,
   taskDots,
   onSelectDate,
+  firstDayOfWeek = 'monday',
 }: MonthCalendarProps) {
   const { theme } = useAppTheme()
 
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
 
-  let startOffset = firstDay.getDay() - 1
-  if (startOffset < 0) startOffset = 6
+  const startOffset = getStartOffset(firstDay.getDay(), firstDayOfWeek)
 
   const days: (number | null)[] = [
     ...new Array(startOffset).fill(null),
@@ -43,7 +56,7 @@ export function MonthCalendar({
   return (
     <View>
       <View style={{ flexDirection: 'row' }}>
-        {WEEKDAYS.map((day) => (
+        {getWeekdayHeaders(firstDayOfWeek).map((day) => (
           <View
             key={day}
             style={{

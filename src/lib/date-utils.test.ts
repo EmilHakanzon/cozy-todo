@@ -71,6 +71,26 @@ describe('startOfWeek', () => {
     const mon = new Date(2026, 7, 17)
     expect(startOfWeek(mon).getDate()).toBe(17)
   })
+
+  it('returns Sunday for Sunday start', () => {
+    const wed = new Date(2026, 7, 19)
+    const sun = startOfWeek(wed, 'sunday')
+    expect(sun.getDay()).toBe(0)
+    expect(sun.getDate()).toBe(16)
+  })
+
+  it('handles Sunday with Sunday start', () => {
+    const sun = new Date(2026, 7, 23)
+    const result = startOfWeek(sun, 'sunday')
+    expect(result.getDay()).toBe(0)
+    expect(result.getDate()).toBe(23)
+  })
+
+  it('defaults to monday when no arg given', () => {
+    const wed = new Date(2026, 7, 19)
+    const mon = startOfWeek(wed)
+    expect(mon.getDay()).toBe(1)
+  })
 })
 
 describe('endOfWeek', () => {
@@ -185,5 +205,18 @@ describe('formatTime', () => {
   it('formats an ISO string to HH:mm', () => {
     const result = formatTime('2026-08-17T14:30:00.000Z')
     expect(result).toMatch(/\d{2}:\d{2}/)
+  })
+
+  it('formats in 12-hour mode', () => {
+    const base = formatTime('2026-08-17T14:30:00.000Z')
+    const result12 = formatTime('2026-08-17T14:30:00.000Z', '12h')
+    expect(result12).not.toBe(base)
+    expect(result12).toMatch(/\d{1,2}:\d{2}/)
+  })
+
+  it('24h and default produce same result', () => {
+    const defaultResult = formatTime('2026-08-17T14:30:00.000Z')
+    const explicit24 = formatTime('2026-08-17T14:30:00.000Z', '24h')
+    expect(defaultResult).toBe(explicit24)
   })
 })

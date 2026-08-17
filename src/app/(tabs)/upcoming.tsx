@@ -29,6 +29,7 @@ import {
   toDateString,
 } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
+import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
@@ -59,11 +60,12 @@ export default function UpcomingScreen() {
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const listsById = useListStore((s) => s.listsById)
+  const firstDayOfWeek = useSettingsStore((s) => s.firstDayOfWeek)
 
   const [view, setView] = useState<UpcomingView>('agenda')
 
   // Week-based state (agenda, day, week views)
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), firstDayOfWeek))
   const [selectedDay, setSelectedDay] = useState(() => new Date())
 
   const weekEnd = useMemo(() => endOfWeek(weekStart), [weekStart])
@@ -79,9 +81,9 @@ export default function UpcomingScreen() {
     [],
   )
   const navigateToday = useCallback(() => {
-    setWeekStart(startOfWeek(new Date()))
+    setWeekStart(startOfWeek(new Date(), firstDayOfWeek))
     setSelectedDay(new Date())
-  }, [])
+  }, [firstDayOfWeek])
 
   // Month-based state
   const [monthDate, setMonthDate] = useState(() => new Date())
@@ -319,6 +321,7 @@ export default function UpcomingScreen() {
                 selectedDate={selectedMonthDay}
                 taskDots={monthTaskDots}
                 onSelectDate={setSelectedMonthDay}
+                firstDayOfWeek={firstDayOfWeek}
               />
             </View>
           }

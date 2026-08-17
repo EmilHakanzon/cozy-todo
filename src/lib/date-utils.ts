@@ -1,3 +1,6 @@
+type FirstDayOfWeek = 'monday' | 'sunday'
+type TimeFormat = '12h' | '24h'
+
 export function startOfDay(date: Date): Date {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
@@ -10,11 +13,15 @@ export function addDays(date: Date, days: number): Date {
   return d
 }
 
-export function startOfWeek(date: Date): Date {
+export function startOfWeek(date: Date, firstDay: FirstDayOfWeek = 'monday'): Date {
   const d = startOfDay(date)
   const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  d.setDate(d.getDate() + diff)
+  if (firstDay === 'sunday') {
+    d.setDate(d.getDate() - day)
+  } else {
+    const diff = day === 0 ? -6 : 1 - day
+    d.setDate(d.getDate() + diff)
+  }
   return d
 }
 
@@ -87,7 +94,11 @@ export function formatMonthYear(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-export function formatTime(isoString: string): string {
+export function formatTime(isoString: string, format: TimeFormat = '24h'): string {
   const d = new Date(isoString)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  return d.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: format === '12h',
+  })
 }
