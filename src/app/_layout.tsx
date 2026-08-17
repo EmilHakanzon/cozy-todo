@@ -7,6 +7,7 @@ import {
 import * as SplashScreen from 'expo-splash-screen'
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router'
 import { useEffect } from 'react'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { QuickAddModal } from '@/components/quick-add'
 import { useAppTheme } from '@/hooks/use-app-theme'
@@ -39,9 +40,11 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null
 
   return (
-    <ThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }} />
-      <QuickAddModal />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={resolvedTheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }} />
+        <QuickAddModal />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   )
 }

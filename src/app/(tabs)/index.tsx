@@ -6,7 +6,7 @@ import { SymbolView } from 'expo-symbols'
 import { InlineQuickAdd } from '@/components/quick-add'
 import { ScreenHeader } from '@/components/screen-header'
 import { SegmentedControl } from '@/components/segmented-control'
-import { TodoItem } from '@/components/todo-item'
+import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import {
   getAllRootTodos,
   getActiveTodos,
@@ -131,7 +131,7 @@ export default function TodayScreen() {
               </View>
             )
           }
-          return <TodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} showListName />
+          return <SwipeableTodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} showListName />
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { InlineQuickAdd } from '@/components/quick-add'
 import { SegmentedControl } from '@/components/segmented-control'
-import { TodoItem } from '@/components/todo-item'
+import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { getActiveTodos, getCompletedTodos, getRootTodos } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useListStore } from '@/stores/list-store'
@@ -144,7 +144,7 @@ export default function ListDetailScreen() {
               </Text>
             )
           }
-          return <TodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} />
+          return <SwipeableTodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} />
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>

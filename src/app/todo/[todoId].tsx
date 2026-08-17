@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DateTimePicker } from '@/components/date-time-picker'
 import { ListPicker } from '@/components/list-picker'
 import { TodoCheckbox } from '@/components/todo-checkbox'
-import { TodoItem } from '@/components/todo-item'
+import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { InlineQuickAdd } from '@/components/quick-add'
 import { getChildren } from '@/features/todos/todo-tree'
 import { getTodoProgress } from '@/features/todos/selectors'
@@ -354,7 +354,7 @@ export default function TodoDetailScreen() {
           {children.length > 0 && (
             <View>
               {children.map((child) => (
-                <TodoItem
+                <SwipeableTodoItem
                   key={child.id}
                   todo={child}
                   onToggle={toggleTodo}
