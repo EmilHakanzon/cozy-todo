@@ -9,6 +9,9 @@ export default defineConfig({
       '@react-native-async-storage/async-storage': fileURLToPath(
         new URL('./src/test/async-storage-mock.ts', import.meta.url)
       ),
+      'expo-notifications': fileURLToPath(
+        new URL('./src/test/expo-notifications-mock.ts', import.meta.url)
+      ),
     },
   },
   test: {

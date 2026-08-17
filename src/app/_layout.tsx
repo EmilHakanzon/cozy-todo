@@ -4,6 +4,7 @@ import {
   Manrope_500Medium,
   Manrope_600SemiBold,
 } from '@expo-google-fonts/manrope'
+import * as Notifications from 'expo-notifications'
 import * as SplashScreen from 'expo-splash-screen'
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router'
 import { useEffect } from 'react'
@@ -13,6 +14,15 @@ import { QuickAddModal } from '@/components/quick-add'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { bootstrapApp } from '@/lib/bootstrap-app'
 import { useListStore } from '@/stores/list-store'
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+})
 
 SplashScreen.preventAutoHideAsync()
 

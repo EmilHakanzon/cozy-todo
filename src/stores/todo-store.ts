@@ -3,9 +3,14 @@ import { create } from 'zustand'
 import type { Todo, TodoId, TodoListId } from '@/features/todos/types'
 import { getDescendantIds, isDescendant } from '@/features/todos/todo-tree'
 import { createId } from '@/lib/create-id'
+import {
+  scheduleTodoReminder,
+  cancelTodoReminder,
+} from '@/lib/notifications'
 import { computeNextDueDate } from '@/lib/recurrence'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { useSettingsStore } from '@/stores/settings-store'
 
 
 type CreateTodoInput = {
@@ -26,6 +31,18 @@ type TodoState = {
   moveTodo: (ind: TodoId,targetParentId: TodoId | null) => void;
   changeList: (id: TodoId, newListId: TodoListId) => void;
   reorderTodo: (id: TodoId, newPosition: number) => void;
+}
+
+function maybeScheduleReminder(todo: Todo) {
+  if (useSettingsStore.getState().remindersEnabled) {
+    scheduleTodoReminder(todo).catch(() => {})
+  }
+}
+
+function maybeCancelReminder(todoId: TodoId) {
+  if (useSettingsStore.getState().remindersEnabled) {
+    cancelTodoReminder(todoId).catch(() => {})
+  }
 }
 
 export const useTodoStore = create<TodoState>()(
@@ -90,6 +107,9 @@ export const useTodoStore = create<TodoState>()(
       },
     }))
 
+    const created = get().todosById[id]
+    if (created) maybeScheduleReminder(created)
+
     return id
   },
   updateTodo: (id, input) => {
@@ -119,6 +139,17 @@ export const useTodoStore = create<TodoState>()(
         [id]: updateTodo,
       },
     }))
+
+    if (input.dueAt !== undefined) {
+      const updated = get().todosById[id]
+      if (updated) {
+        if (updated.dueAt) {
+          maybeScheduleReminder(updated)
+        } else {
+          maybeCancelReminder(id)
+        }
+      }
+    }
   },
   toggleTodo: (id) => {
     const existing = get().todosById[id]
@@ -137,7 +168,15 @@ export const useTodoStore = create<TodoState>()(
           [id]: { ...existing, dueAt: nextDueAt, updatedAt: now },
         },
       }))
+      const updated = get().todosById[id]
+      if (updated) maybeScheduleReminder(updated)
       return
+    }
+
+    if (!existing.completedAt) {
+      maybeCancelReminder(id)
+    } else if (existing.dueAt) {
+      maybeScheduleReminder({ ...existing, completedAt: null })
     }
 
     set((state) => ({
@@ -161,6 +200,9 @@ export const useTodoStore = create<TodoState>()(
     const descendantIds = getDescendantIds(todosById, id)
 
     const idsToDelete = new Set([id, ...descendantIds])
+    for (const deleteId of idsToDelete) {
+      maybeCancelReminder(deleteId)
+    }
 
     set((state) => {
       const nextTodoById = Object.fromEntries(
