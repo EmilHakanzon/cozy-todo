@@ -1,8 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
-import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { SettingsScreenHeader } from '@/components/settings-screen-header'
 import { TODO_LIST_COLORS } from '@/features/lists/types'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -11,12 +10,6 @@ import { typography } from '@/themes/typography'
 
 import type { TodoListColor } from '@/features/lists/types'
 import type { SymbolViewProps } from 'expo-symbols'
-
-const BACK_ICON: SymbolViewProps['name'] = {
-  ios: 'chevron.left',
-  android: 'arrow_back',
-  web: 'arrow_back',
-}
 
 const CHECK_ICON: SymbolViewProps['name'] = {
   ios: 'checkmark',
@@ -35,34 +28,13 @@ const COLOR_LABELS: Record<TodoListColor, string> = {
 
 export default function AccentColorScreen() {
   const { theme, resolvedTheme } = useAppTheme()
-  const insets = useSafeAreaInsets()
   const accentColor = useSettingsStore((s) => s.accentColor)
   const setAccentColor = useSettingsStore((s) => s.setAccentColor)
   const listColors = listColorsFor(resolvedTheme)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.spacing.md,
-          paddingHorizontal: theme.spacing.lg,
-          paddingBottom: theme.spacing.md,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.sm,
-        }}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-        >
-          <SymbolView name={BACK_ICON} size={20} tintColor={theme.color.text2} />
-        </Pressable>
-        <Text style={{ ...typography.screenTitle, fontSize: 24, flex: 1, color: theme.color.text }}>
-          Accent color
-        </Text>
-      </View>
+      <SettingsScreenHeader title="Accent color" />
 
       <View
         style={{

@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import {
   Alert,
-  FlatList,
   Pressable,
   ScrollView,
   Text,
@@ -13,12 +12,14 @@ import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DateTimePicker } from '@/components/date-time-picker'
+import { DetailRow } from '@/components/detail-row'
 import { SubtaskGroup } from '@/components/subtask-group'
 import { ListPicker } from '@/components/list-picker'
 import { RecurrencePicker } from '@/components/recurrence-picker'
 import { TodoCheckbox } from '@/components/todo-checkbox'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { InlineQuickAdd } from '@/components/quick-add'
+import { formatDueLabel, formatRecurrenceLabel } from '@/features/todos/format'
 import { getChildren } from '@/features/todos/todo-tree'
 import { getTodoProgress } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
@@ -177,23 +178,8 @@ export default function TodoDetailScreen() {
 
   const isCompleted = todo.completedAt !== null
 
-  const recurrenceLabel = (() => {
-    if (!todo.recurrence) return 'None'
-    const { frequency, interval } = todo.recurrence
-    if (frequency === 'weekly' && interval === 2) return 'Biweekly'
-    if (interval === 1) return frequency.charAt(0).toUpperCase() + frequency.slice(1)
-    return `Every ${interval} ${frequency.replace('ly', '')}s`
-  })()
-
-  const dueLabel = todo.dueAt
-    ? new Date(todo.dueAt).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Add date & time'
+  const recurrenceLabel = formatRecurrenceLabel(todo.recurrence)
+  const dueLabel = formatDueLabel(todo.dueAt)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -270,87 +256,40 @@ export default function TodoDetailScreen() {
         </View>
 
         <View style={{ paddingTop: theme.spacing.lg, gap: theme.spacing.xs }}>
-          <Pressable
+          <DetailRow
+            icon={CALENDAR_ICON}
+            label={dueLabel}
+            labelColor={todo.dueAt ? theme.color.text : theme.color.text2}
             onPress={() => setShowDatePicker(true)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              backgroundColor: theme.color.surfaceSoft,
-              borderRadius: theme.radius.md,
-              paddingHorizontal: theme.spacing.md,
-              paddingVertical: theme.spacing.sm,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <SymbolView name={CALENDAR_ICON} size={20} tintColor={theme.color.text2} />
-            <Text
-              style={{
-                ...typography.body,
-                flex: 1,
-                color: todo.dueAt ? theme.color.text : theme.color.text2,
-              }}
-            >
-              {dueLabel}
-            </Text>
-          </Pressable>
+          />
 
-          <Pressable
+          <DetailRow
+            iconSlot={
+              palette && (
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: theme.radius.sm,
+                    backgroundColor: palette.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SymbolView name={LIST_ICON} size={12} tintColor={palette.accent} />
+                </View>
+              )
+            }
+            label={list?.name ?? 'Unknown list'}
             onPress={() => setShowListPicker(true)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              backgroundColor: theme.color.surfaceSoft,
-              borderRadius: theme.radius.md,
-              paddingHorizontal: theme.spacing.md,
-              paddingVertical: theme.spacing.sm,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            {palette && (
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: theme.radius.sm,
-                  backgroundColor: palette.background,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <SymbolView name={LIST_ICON} size={12} tintColor={palette.accent} />
-              </View>
-            )}
-            <Text style={{ ...typography.body, flex: 1, color: theme.color.text }}>
-              {list?.name ?? 'Unknown list'}
-            </Text>
-          </Pressable>
+          />
 
-          <Pressable
+          <DetailRow
+            icon={REPEAT_ICON}
+            label={recurrenceLabel}
+            labelColor={todo.recurrence ? theme.color.text : theme.color.text2}
             onPress={() => setShowRecurrence(true)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              backgroundColor: theme.color.surfaceSoft,
-              borderRadius: theme.radius.md,
-              paddingHorizontal: theme.spacing.md,
-              paddingVertical: theme.spacing.sm,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <SymbolView name={REPEAT_ICON} size={20} tintColor={theme.color.text2} />
-            <Text
-              style={{
-                ...typography.body,
-                flex: 1,
-                color: todo.recurrence ? theme.color.text : theme.color.text2,
-              }}
-            >
-              {recurrenceLabel}
-            </Text>
-          </Pressable>
+          />
         </View>
 
         <View style={{ paddingTop: theme.spacing.lg }}>

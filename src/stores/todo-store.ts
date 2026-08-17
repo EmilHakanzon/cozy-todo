@@ -33,6 +33,18 @@ type TodoState = {
   reorderTodo: (id: TodoId, newPosition: number) => void;
 }
 
+function nextSiblingPosition(
+  todosById: Record<TodoId, Todo>,
+  listId: TodoListId,
+  parentId: TodoId | null,
+  excludeId?: TodoId,
+): number {
+  const siblings = Object.values(todosById).filter(
+    (t) => t.listId === listId && t.parentId === parentId && t.id !== excludeId,
+  )
+  return siblings.length === 0 ? 0 : Math.max(...siblings.map((t) => t.position)) + 1
+}
+
 function maybeScheduleReminder(todo: Todo) {
   if (useSettingsStore.getState().remindersEnabled) {
     scheduleTodoReminder(todo).catch(() => {})
@@ -75,12 +87,7 @@ export const useTodoStore = create<TodoState>()(
     const now = new Date().toISOString()
     const id = createId()
 
-    const siblings = Object.values(get().todosById).filter(
-      (todo) => todo.listId === input.listId && todo.parentId === parentId
-    )
-
-    const position =
-      siblings.length === 0 ? 0 : Math.max(...siblings.map((todo) => todo.position)) + 1
+    const position = nextSiblingPosition(get().todosById, input.listId, parentId)
 
     const todo: Todo = {
       id,
@@ -242,15 +249,7 @@ export const useTodoStore = create<TodoState>()(
       targetListId = targetParent.listId
     }
 
-    const siblings = Object.values(todosById).filter(
-      (candidate) =>
-        candidate.id !== id &&
-        candidate.listId === targetListId &&
-        candidate.parentId === targetParentId
-    )
-
-    const nextPosition =
-      siblings.length === 0 ? 0 : Math.max(...siblings.map((item) => item.position)) + 1
+    const nextPosition = nextSiblingPosition(todosById, targetListId, targetParentId, id)
 
     const now = new Date().toISOString()
 

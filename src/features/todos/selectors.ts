@@ -1,5 +1,11 @@
+import { formatDayHeader } from '@/lib/date-utils'
+
 import { getChildren, sortByPosition } from './todo-tree'
 import type { Todo, TodoById, TodoId, TodoListId } from './types'
+
+export type AgendaSection =
+  | { type: 'header'; label: string; count: number }
+  | { type: 'todo'; todo: Todo }
 
 export type TodoProgress = {
   total: number
@@ -115,6 +121,27 @@ export function getTodosForDate(todosById: TodoById, dateStr: string): Todo[] {
       (todo) => todo.parentId === null && todo.dueAt?.startsWith(dateStr),
     ),
   )
+}
+
+export function buildAgendaSections(todos: Todo[]): AgendaSection[] {
+  const grouped = groupTodosByDate(todos)
+  const sections: AgendaSection[] = []
+
+  const sortedDates = [...grouped.keys()].sort()
+  for (const dateStr of sortedDates) {
+    const dateTodos = grouped.get(dateStr)!
+    const date = new Date(dateStr + 'T00:00:00')
+    sections.push({ type: 'header', label: formatDayHeader(date), count: dateTodos.length })
+    const sorted = [...dateTodos].sort((a, b) => {
+      if (!a.dueAt || !b.dueAt) return 0
+      return a.dueAt.localeCompare(b.dueAt)
+    })
+    for (const todo of sorted) {
+      sections.push({ type: 'todo', todo })
+    }
+  }
+
+  return sections
 }
 
 export function searchTodos(todosById: TodoById, query: string): Todo[] {

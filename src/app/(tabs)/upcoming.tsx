@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 
@@ -11,30 +11,21 @@ import { ScreenHeader } from '@/components/screen-header'
 import { SegmentedControl } from '@/components/segmented-control'
 import { TimeGrid } from '@/components/time-grid'
 import {
+  buildAgendaSections,
   getTodosInDateRange,
   groupTodosByDate,
   getTodosForDate,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
-import {
-  addDays,
-  endOfMonth,
-  endOfWeek,
-  formatMonthYear,
-  formatWeekRange,
-  formatDayHeader,
-  getWeekDays,
-  startOfMonth,
-  startOfWeek,
-  toDateString,
-} from '@/lib/date-utils'
+import { useMonthNavigation } from '@/hooks/use-month-navigation'
+import { useWeekNavigation } from '@/hooks/use-week-navigation'
+import { toDateString } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
-import type { Todo } from '@/features/todos/types'
 
 type UpcomingView = 'agenda' | 'day' | 'week' | 'month'
 
@@ -51,10 +42,6 @@ const CHEVRON_RIGHT: SymbolViewProps['name'] = {
   web: 'chevron_right',
 }
 
-type AgendaSection =
-  | { type: 'header'; label: string; count: number }
-  | { type: 'todo'; todo: Todo }
-
 export default function UpcomingScreen() {
   const { theme } = useAppTheme()
   const todosById = useTodoStore((s) => s.todosById)
@@ -64,103 +51,38 @@ export default function UpcomingScreen() {
 
   const [view, setView] = useState<UpcomingView>('agenda')
 
-  // Week-based state (agenda, day, week views)
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), firstDayOfWeek))
-  const [selectedDay, setSelectedDay] = useState(() => new Date())
+  const week = useWeekNavigation(firstDayOfWeek)
+  const month = useMonthNavigation()
 
-  const weekEnd = useMemo(() => endOfWeek(weekStart), [weekStart])
-  const rangeLabel = useMemo(() => formatWeekRange(weekStart, weekEnd), [weekStart, weekEnd])
-  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart])
-
-  const navigatePrev = useCallback(
-    () => setWeekStart((prev) => addDays(prev, -7)),
-    [],
-  )
-  const navigateNext = useCallback(
-    () => setWeekStart((prev) => addDays(prev, 7)),
-    [],
-  )
-  const navigateToday = useCallback(() => {
-    setWeekStart(startOfWeek(new Date(), firstDayOfWeek))
-    setSelectedDay(new Date())
-  }, [firstDayOfWeek])
-
-  // Month-based state
-  const [monthDate, setMonthDate] = useState(() => new Date())
-  const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null)
-
-  const monthStart = useMemo(() => startOfMonth(monthDate), [monthDate])
-  const monthEnd = useMemo(() => endOfMonth(monthDate), [monthDate])
-  const monthLabel = useMemo(() => formatMonthYear(monthDate), [monthDate])
-
-  const navigateMonthPrev = useCallback(() => {
-    setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-    setSelectedMonthDay(null)
-  }, [])
-  const navigateMonthNext = useCallback(() => {
-    setMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-    setSelectedMonthDay(null)
-  }, [])
-  const navigateMonthToday = useCallback(() => {
-    setMonthDate(new Date())
-    setSelectedMonthDay(null)
-  }, [])
-
-  // Agenda data
   const weekTodos = useMemo(
-    () => getTodosInDateRange(todosById, toDateString(weekStart), toDateString(weekEnd)),
-    [todosById, weekStart, weekEnd],
+    () => getTodosInDateRange(todosById, toDateString(week.weekStart), toDateString(week.weekEnd)),
+    [todosById, week.weekStart, week.weekEnd],
   )
 
-  const agendaSections = useMemo(() => {
-    const grouped = groupTodosByDate(weekTodos)
-    const sections: AgendaSection[] = []
+  const agendaSections = useMemo(() => buildAgendaSections(weekTodos), [weekTodos])
 
-    const sortedDates = [...grouped.keys()].sort()
-    for (const dateStr of sortedDates) {
-      const todos = grouped.get(dateStr)!
-      const date = new Date(dateStr + 'T00:00:00')
-      sections.push({
-        type: 'header',
-        label: formatDayHeader(date),
-        count: todos.length,
-      })
-      const sorted = [...todos].sort((a, b) => {
-        if (!a.dueAt || !b.dueAt) return 0
-        return a.dueAt.localeCompare(b.dueAt)
-      })
-      for (const todo of sorted) {
-        sections.push({ type: 'todo', todo })
-      }
-    }
-
-    return sections
-  }, [weekTodos])
-
-  // Day data
   const dayTodos = useMemo(
-    () => getTodosForDate(todosById, toDateString(selectedDay)),
-    [todosById, selectedDay],
+    () => getTodosForDate(todosById, toDateString(week.selectedDay)),
+    [todosById, week.selectedDay],
   )
 
-  // Week data
-  const weekColumns = useMemo(() => {
-    return weekDays.map((day) => ({
-      todos: getTodosForDate(todosById, toDateString(day)),
-    }))
-  }, [weekDays, todosById])
+  const weekColumns = useMemo(
+    () => week.weekDays.map((day) => ({ todos: getTodosForDate(todosById, toDateString(day)) })),
+    [week.weekDays, todosById],
+  )
 
-  const weekColumnHeaders = useMemo(() => {
-    return weekDays.map((day) => {
-      const abbr = day.toLocaleDateString('en-US', { weekday: 'short' })
-      return `${abbr}\n${day.getDate()}`
-    })
-  }, [weekDays])
+  const weekColumnHeaders = useMemo(
+    () =>
+      week.weekDays.map((day) => {
+        const abbr = day.toLocaleDateString('en-US', { weekday: 'short' })
+        return `${abbr}\n${day.getDate()}`
+      }),
+    [week.weekDays],
+  )
 
-  // Month data
   const monthTodos = useMemo(
-    () => getTodosInDateRange(todosById, toDateString(monthStart), toDateString(monthEnd)),
-    [todosById, monthStart, monthEnd],
+    () => getTodosInDateRange(todosById, toDateString(month.monthStart), toDateString(month.monthEnd)),
+    [todosById, month.monthStart, month.monthEnd],
   )
 
   const monthTaskDots = useMemo(() => {
@@ -206,10 +128,10 @@ export default function UpcomingScreen() {
 
         {(view === 'agenda' || view === 'day' || view === 'week') && (
           <DateRangeNav
-            label={rangeLabel}
-            onPrev={navigatePrev}
-            onNext={navigateNext}
-            onToday={navigateToday}
+            label={week.rangeLabel}
+            onPrev={week.navigatePrev}
+            onNext={week.navigateNext}
+            onToday={week.navigateToday}
           />
         )}
       </View>
@@ -227,50 +149,16 @@ export default function UpcomingScreen() {
           renderItem={({ item }) => {
             if (item.type === 'header') {
               return (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingTop: theme.spacing.lg,
-                    paddingBottom: theme.spacing.xs,
-                  }}
-                >
-                  <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
-                    {item.label}
-                  </Text>
-                  <View
-                    style={{
-                      minWidth: 22,
-                      height: 22,
-                      borderRadius: 11,
-                      backgroundColor: theme.color.accentSoft,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingHorizontal: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontFamily: 'Manrope_600SemiBold',
-                        color: theme.color.accent,
-                      }}
-                    >
-                      {item.count}
-                    </Text>
-                  </View>
-                </View>
+                <AgendaSectionHeader
+                  label={item.label}
+                  count={item.count}
+                />
               )
             }
             return <AgendaItem todo={item.todo} onToggle={toggleTodo} />
           }}
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>
-              <Text style={{ ...typography.body, color: theme.color.text2 }}>
-                No upcoming tasks this week
-              </Text>
-            </View>
+            <EmptyState message="No upcoming tasks this week" large />
           }
           ListFooterComponent={<InlineQuickAdd />}
         />
@@ -279,7 +167,7 @@ export default function UpcomingScreen() {
       {view === 'day' && (
         <View style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: theme.spacing.lg }}>
-            <DaySelector days={weekDays} selectedDate={selectedDay} onSelect={setSelectedDay} />
+            <DaySelector days={week.weekDays} selectedDate={week.selectedDay} onSelect={week.setSelectedDay} />
           </View>
           <TimeGrid
             columns={[{ todos: dayTodos }]}
@@ -310,61 +198,124 @@ export default function UpcomingScreen() {
           ListHeaderComponent={
             <View>
               <DateRangeNav
-                label={monthLabel}
-                onPrev={navigateMonthPrev}
-                onNext={navigateMonthNext}
-                onToday={navigateMonthToday}
+                label={month.monthLabel}
+                onPrev={month.navigateMonthPrev}
+                onNext={month.navigateMonthNext}
+                onToday={month.navigateMonthToday}
               />
               <MonthCalendar
-                year={monthDate.getFullYear()}
-                month={monthDate.getMonth()}
-                selectedDate={selectedMonthDay}
+                year={month.monthDate.getFullYear()}
+                month={month.monthDate.getMonth()}
+                selectedDate={month.selectedMonthDay}
                 taskDots={monthTaskDots}
-                onSelectDate={setSelectedMonthDay}
+                onSelectDate={month.setSelectedMonthDay}
                 firstDayOfWeek={firstDayOfWeek}
               />
             </View>
           }
           renderItem={({ item }) => (
-            <Pressable
+            <MonthDaySummaryRow
+              label={item.label}
+              count={item.count}
               onPress={() => {
                 const date = new Date(item.dateStr + 'T00:00:00')
-                setSelectedMonthDay(date)
+                month.setSelectedMonthDay(date)
               }}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: theme.spacing.sm,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.color.border,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Text style={{ ...typography.body, color: theme.color.text }}>
-                {item.label}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-                <Text style={{ ...typography.meta, color: theme.color.text2 }}>
-                  {item.count} {item.count === 1 ? 'task' : 'tasks'}
-                </Text>
-                <SymbolView
-                  name={CHEVRON_RIGHT}
-                  size={14}
-                  tintColor={theme.color.text2}
-                />
-              </View>
-            </Pressable>
+            />
           )}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: theme.spacing.lg }}>
-              <Text style={{ ...typography.body, color: theme.color.text2 }}>
-                No tasks this month
-              </Text>
-            </View>
-          }
+          ListEmptyComponent={<EmptyState message="No tasks this month" />}
         />
       )}
+    </View>
+  )
+}
+
+function AgendaSectionHeader({ label, count }: { label: string; count: number }) {
+  const { theme } = useAppTheme()
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: theme.spacing.lg,
+        paddingBottom: theme.spacing.xs,
+      }}
+    >
+      <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
+        {label}
+      </Text>
+      <View
+        style={{
+          minWidth: 22,
+          height: 22,
+          borderRadius: 11,
+          backgroundColor: theme.color.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 6,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontFamily: 'Manrope_600SemiBold',
+            color: theme.color.accent,
+          }}
+        >
+          {count}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function MonthDaySummaryRow({
+  label,
+  count,
+  onPress,
+}: {
+  label: string
+  count: number
+  onPress: () => void
+}) {
+  const { theme } = useAppTheme()
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: theme.spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.color.border,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Text style={{ ...typography.body, color: theme.color.text }}>
+        {label}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+        <Text style={{ ...typography.meta, color: theme.color.text2 }}>
+          {count} {count === 1 ? 'task' : 'tasks'}
+        </Text>
+        <SymbolView name={CHEVRON_RIGHT} size={14} tintColor={theme.color.text2} />
+      </View>
+    </Pressable>
+  )
+}
+
+function EmptyState({ message, large }: { message: string; large?: boolean }) {
+  const { theme } = useAppTheme()
+
+  return (
+    <View style={{ alignItems: 'center', paddingTop: large ? theme.spacing['3xl'] : theme.spacing.lg }}>
+      <Text style={{ ...typography.body, color: theme.color.text2 }}>
+        {message}
+      </Text>
     </View>
   )
 }

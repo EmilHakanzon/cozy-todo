@@ -1,20 +1,13 @@
 import { Pressable, Text, View } from 'react-native'
-import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { SettingsScreenHeader } from '@/components/settings-screen-header'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useSettingsStore } from '@/stores/settings-store'
 import { typography } from '@/themes/typography'
 
 import type { TimeFormat } from '@/stores/settings-store'
 import type { SymbolViewProps } from 'expo-symbols'
-
-const BACK_ICON: SymbolViewProps['name'] = {
-  ios: 'chevron.left',
-  android: 'arrow_back',
-  web: 'arrow_back',
-}
 
 const CHECK_ICON: SymbolViewProps['name'] = {
   ios: 'checkmark',
@@ -35,33 +28,12 @@ const OPTIONS: { key: TimeFormat; label: string; subtitle: string }[] = [
 
 export default function TimeFormatScreen() {
   const { theme } = useAppTheme()
-  const insets = useSafeAreaInsets()
   const timeFormat = useSettingsStore((s) => s.timeFormat)
   const setTimeFormat = useSettingsStore((s) => s.setTimeFormat)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.spacing.md,
-          paddingHorizontal: theme.spacing.lg,
-          paddingBottom: theme.spacing.md,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.sm,
-        }}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-        >
-          <SymbolView name={BACK_ICON} size={20} tintColor={theme.color.text2} />
-        </Pressable>
-        <Text style={{ ...typography.screenTitle, fontSize: 24, flex: 1, color: theme.color.text }}>
-          Time format
-        </Text>
-      </View>
+      <SettingsScreenHeader title="Time format" />
 
       <View style={{ paddingHorizontal: theme.spacing.lg }}>
         {OPTIONS.map((option) => {
