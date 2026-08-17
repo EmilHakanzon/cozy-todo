@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useListStore } from '@/stores/list-store'
@@ -14,10 +14,11 @@ import type { Todo, TodoId } from '@/features/todos/types'
 type TodoItemProps = {
   todo: Todo
   onToggle: (id: TodoId) => void
+  onPress?: (id: TodoId) => void
   showListName?: boolean
 }
 
-export function TodoItem({ todo, onToggle, showListName = false }: TodoItemProps) {
+export function TodoItem({ todo, onToggle, onPress, showListName = false }: TodoItemProps) {
   const { theme, resolvedTheme } = useAppTheme()
   const list = useListStore((s) => s.listsById[todo.listId])
   const todosById = useTodoStore((s) => s.todosById)
@@ -46,13 +47,16 @@ export function TodoItem({ todo, onToggle, showListName = false }: TodoItemProps
   }
 
   return (
-    <View
-      style={{
+    <Pressable
+      onPress={() => onPress?.(todo.id)}
+      disabled={!onPress}
+      style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'flex-start',
         paddingVertical: theme.spacing.sm,
         gap: theme.spacing.sm,
-      }}
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
       <TodoCheckbox checked={isCompleted} onToggle={() => onToggle(todo.id)} />
       <View style={{ flex: 1 }}>
@@ -84,6 +88,6 @@ export function TodoItem({ todo, onToggle, showListName = false }: TodoItemProps
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   )
 }

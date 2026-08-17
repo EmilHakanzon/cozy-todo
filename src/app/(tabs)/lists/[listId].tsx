@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
@@ -40,6 +40,11 @@ export default function ListDetailScreen() {
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const [filter, setFilter] = useState<ListFilter>('all')
+
+  const handleTodoPress = useCallback(
+    (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
+    [],
+  )
 
   const rootTodos = useMemo(() => getRootTodos(todosById, listId), [todosById, listId])
   const activeTodos = useMemo(() => getActiveTodos(rootTodos), [rootTodos])
@@ -139,7 +144,7 @@ export default function ListDetailScreen() {
               </Text>
             )
           }
-          return <TodoItem todo={item.todo} onToggle={toggleTodo} />
+          return <TodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} />
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>

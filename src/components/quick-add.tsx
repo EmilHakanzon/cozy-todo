@@ -9,7 +9,7 @@ import { typography } from '@/themes/typography'
 
 export function QuickAddModal() {
   const { theme } = useAppTheme()
-  const { isOpen, defaultListId, close } = useQuickAddStore()
+  const { isOpen, defaultListId, defaultParentId, close } = useQuickAddStore()
   const createTodo = useTodoStore((s) => s.createTodo)
   const firstListId = useListStore((s) => {
     const lists = Object.values(s.listsById)
@@ -23,7 +23,7 @@ export function QuickAddModal() {
   function handleAdd() {
     const trimmed = title.trim()
     if (!trimmed || !listId) return
-    createTodo({ listId, title: trimmed })
+    createTodo({ listId, parentId: defaultParentId, title: trimmed })
     setTitle('')
     close()
   }
@@ -95,15 +95,16 @@ export function QuickAddModal() {
 
 type InlineQuickAddProps = {
   listId?: string
+  parentId?: string
 }
 
-export function InlineQuickAdd({ listId }: InlineQuickAddProps) {
+export function InlineQuickAdd({ listId, parentId }: InlineQuickAddProps) {
   const { theme } = useAppTheme()
   const open = useQuickAddStore((s) => s.open)
 
   return (
     <Pressable
-      onPress={() => open(listId)}
+      onPress={() => open(listId, parentId)}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',

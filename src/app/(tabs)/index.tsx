@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
@@ -43,6 +43,11 @@ export default function TodayScreen() {
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const [filter, setFilter] = useState<Filter>('today')
+
+  const handleTodoPress = useCallback(
+    (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
+    [],
+  )
 
   const allRootTodos = useMemo(() => getAllRootTodos(todosById), [todosById])
 
@@ -126,7 +131,7 @@ export default function TodayScreen() {
               </View>
             )
           }
-          return <TodoItem todo={item.todo} onToggle={toggleTodo} showListName />
+          return <TodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} showListName />
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>

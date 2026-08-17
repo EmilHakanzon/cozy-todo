@@ -23,6 +23,7 @@ type TodoState = {
   toggleTodo: (id: TodoId) => void
   deleteTodo: (id: TodoId) => void
   moveTodo: (ind: TodoId,targetParentId: TodoId | null) => void;
+  changeList: (id: TodoId, newListId: TodoListId) => void;
 }
 
 export const useTodoStore = create<TodoState>()(
@@ -226,7 +227,28 @@ export const useTodoStore = create<TodoState>()(
         todosById: nextTodosById,
       }
     })
-  }
+  },
+  changeList: (id, newListId) => {
+    const todosById = get().todosById
+    const todo = todosById[id]
+
+    if (!todo) throw new Error('Todo does not exist')
+
+    const now = new Date().toISOString()
+    const descendantIds = getDescendantIds(todosById, id)
+
+    set((state) => {
+      const next = { ...state.todosById }
+
+      next[id] = { ...todo, listId: newListId, parentId: null, updatedAt: now }
+
+      for (const descId of descendantIds) {
+        next[descId] = { ...next[descId], listId: newListId, updatedAt: now }
+      }
+
+      return { todosById: next }
+    })
+  },
 }),
  {
     name:'todo',
