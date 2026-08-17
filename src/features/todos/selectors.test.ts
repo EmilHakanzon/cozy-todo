@@ -29,6 +29,7 @@ function makeTodo(todo: Partial<Todo> & Pick<Todo, 'id'>): Todo {
     dueAt: null,
     completedAt: null,
     recurrence: null,
+    tagIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     position: 0,

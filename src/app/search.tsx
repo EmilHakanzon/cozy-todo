@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { FlatList } from 'react-native-gesture-handler'
@@ -8,7 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { searchTodos } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useTagStore } from '@/stores/tag-store'
 import { useTodoStore } from '@/stores/todo-store'
+import { tagColorsFor } from '@/themes/tag-color'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
@@ -30,22 +32,55 @@ const CLEAR_ICON: SymbolViewProps['name'] = {
 }
 
 export default function SearchScreen() {
-  const { theme } = useAppTheme()
+  const { theme, resolvedTheme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
+  const tagsById = useTagStore((s) => s.tagsById)
   const [query, setQuery] = useState('')
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set())
 
-  const results = useMemo(
-    () => searchTodos(todosById, query),
-    [todosById, query],
-  )
+  const tags = useMemo(() => Object.values(tagsById), [tagsById])
+  const tagPalettes = tagColorsFor(resolvedTheme)
+
+  const results = useMemo(() => {
+    const hasQuery = query.trim().length > 0
+    const hasTagFilter = selectedTagIds.size > 0
+
+    if (!hasQuery && !hasTagFilter) return []
+
+    let candidates = hasQuery
+      ? searchTodos(todosById, query)
+      : Object.values(todosById)
+
+    if (hasTagFilter) {
+      candidates = candidates.filter((todo) =>
+        (todo.tagIds ?? []).some((tagId) => selectedTagIds.has(tagId)),
+      )
+    }
+
+    return candidates
+  }, [todosById, query, selectedTagIds])
 
   const handleTodoPress = useCallback(
     (id: string) =>
       router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
     [],
   )
+
+  const toggleTagFilter = useCallback((tagId: string) => {
+    setSelectedTagIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tagId)) {
+        next.delete(tagId)
+      } else {
+        next.add(tagId)
+      }
+      return next
+    })
+  }, [])
+
+  const hasActiveFilters = query.trim().length > 0 || selectedTagIds.size > 0
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -97,6 +132,47 @@ export default function SearchScreen() {
         </View>
       </View>
 
+      {tags.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            gap: theme.spacing.xs,
+            paddingBottom: theme.spacing.sm,
+          }}
+        >
+          {tags.map((tag) => {
+            const isActive = selectedTagIds.has(tag.id)
+            const palette = tagPalettes[tag.color]
+            return (
+              <Pressable
+                key={tag.id}
+                onPress={() => toggleTagFilter(tag.id)}
+                style={({ pressed }) => ({
+                  paddingHorizontal: theme.spacing.sm,
+                  paddingVertical: theme.spacing.micro,
+                  borderRadius: theme.radius.full,
+                  backgroundColor: isActive ? palette.background : theme.color.surfaceSoft,
+                  borderWidth: isActive ? 1 : 0,
+                  borderColor: palette.text,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    ...typography.meta,
+                    color: isActive ? palette.text : theme.color.text2,
+                  }}
+                >
+                  {tag.name}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </ScrollView>
+      )}
+
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
@@ -113,10 +189,10 @@ export default function SearchScreen() {
           />
         )}
         ListEmptyComponent={
-          query.trim().length > 0 ? (
+          hasActiveFilters ? (
             <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>
               <Text style={{ ...typography.body, color: theme.color.text2 }}>
-                No tasks match "{query}"
+                No tasks found
               </Text>
             </View>
           ) : (

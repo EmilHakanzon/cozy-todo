@@ -16,6 +16,7 @@ import { DetailRow } from '@/components/detail-row'
 import { SubtaskGroup } from '@/components/subtask-group'
 import { ListPicker } from '@/components/list-picker'
 import { RecurrencePicker } from '@/components/recurrence-picker'
+import { TagPicker } from '@/components/tag-picker'
 import { TodoCheckbox } from '@/components/todo-checkbox'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { InlineQuickAdd } from '@/components/quick-add'
@@ -51,6 +52,11 @@ const REPEAT_ICON: SymbolViewProps['name'] = {
   ios: 'repeat',
   android: 'repeat',
   web: 'repeat',
+}
+const TAG_ICON: SymbolViewProps['name'] = {
+  ios: 'tag',
+  android: 'label',
+  web: 'label',
 }
 const TRASH_ICON: SymbolViewProps['name'] = {
   ios: 'trash',
@@ -170,6 +176,18 @@ export default function TodoDetailScreen() {
       },
     ])
   }, [todo, deleteTodo])
+
+  const handleToggleTag = useCallback(
+    (tagId: string) => {
+      if (!todo) return
+      const current = todo.tagIds ?? []
+      const next = current.includes(tagId)
+        ? current.filter((id) => id !== tagId)
+        : [...current, tagId]
+      updateTodo(todo.id, { tagIds: next })
+    },
+    [todo, updateTodo],
+  )
 
   const handleSubtaskPress = useCallback(
     (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
@@ -291,6 +309,26 @@ export default function TodoDetailScreen() {
             label={recurrenceLabel}
             labelColor={todo.recurrence ? theme.color.text : theme.color.text2}
             onPress={() => setShowRecurrence(true)}
+          />
+        </View>
+
+        <View style={{ paddingTop: theme.spacing.lg }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.xs,
+              paddingBottom: theme.spacing.xs,
+            }}
+          >
+            <SymbolView name={TAG_ICON} size={14} tintColor={theme.color.text2} />
+            <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
+              TAGS
+            </Text>
+          </View>
+          <TagPicker
+            selectedTagIds={todo.tagIds ?? []}
+            onToggleTag={handleToggleTag}
           />
         </View>
 

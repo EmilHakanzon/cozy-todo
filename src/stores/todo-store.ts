@@ -20,7 +20,7 @@ type CreateTodoInput = {
   notes?: string
   dueAt?: string | null
 }
-type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt' | 'recurrence'>>
+type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt' | 'recurrence' | 'tagIds'>>
 
 type TodoState = {
   todosById: Record<TodoId, Todo>
@@ -100,6 +100,7 @@ export const useTodoStore = create<TodoState>()(
       dueAt: input.dueAt ?? null,
       completedAt: null,
       recurrence: null,
+      tagIds: [],
 
       position,
 
@@ -338,7 +339,16 @@ export const useTodoStore = create<TodoState>()(
     partialize: (state) => ({
       todosById: state.todosById,
     }),
-    version: 1,
+    version: 2,
+    migrate: (persisted, version) => {
+      const state = persisted as { todosById: Record<string, Todo> }
+      if (version < 2) {
+        for (const todo of Object.values(state.todosById)) {
+          if (!todo.tagIds) todo.tagIds = []
+        }
+      }
+      return state
+    },
   }
   )
 )

@@ -5,11 +5,13 @@ import { useAppTheme } from '@/hooks/use-app-theme'
 import { formatTime, getDueUrgency, isDateOnly } from '@/lib/date-utils'
 import { useListStore } from '@/stores/list-store'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useTagStore } from '@/stores/tag-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { getTodoProgress } from '@/features/todos/selectors'
 import { getChildren } from '@/features/todos/todo-tree'
 import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
+import { TagPill } from './tag-pill'
 import { TodoCheckbox } from './todo-checkbox'
 
 import type { SymbolViewProps } from 'expo-symbols'
@@ -28,6 +30,7 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
   const { theme, resolvedTheme } = useAppTheme()
   const list = useListStore((s) => s.listsById[todo.listId])
   const todosById = useTodoStore((s) => s.todosById)
+  const tagsById = useTagStore((s) => s.tagsById)
   const timeFormat = useSettingsStore((s) => s.timeFormat)
   const children = getChildren(todosById, todo.id)
   const isCompleted = todo.completedAt !== null
@@ -36,6 +39,7 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
   const listColors = listColorsFor(resolvedTheme)
   const listColor = list ? listColors[list.color] : null
 
+  const tags = (todo.tagIds ?? []).map((id) => tagsById[id]).filter(Boolean)
   const urgency = todo.dueAt ? getDueUrgency(todo.dueAt, isCompleted) : 'normal'
 
   const metaParts: string[] = []
@@ -98,8 +102,8 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
         >
           {todo.title}
         </Text>
-        {(metaParts.length > 0 || todo.recurrence) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.micro, marginTop: 2 }}>
+        {(metaParts.length > 0 || todo.recurrence || tags.length > 0) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.micro, marginTop: 2, flexWrap: 'wrap' }}>
             {showListName && listColor && (
               <View
                 style={{
@@ -110,12 +114,17 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
                 }}
               />
             )}
-            <Text style={{ ...typography.meta, color: urgency === 'overdue' ? theme.color.overdue : urgency === 'dueSoon' ? theme.color.dueSoon : theme.color.text2 }}>
-              {metaParts.join(' · ')}
-            </Text>
+            {metaParts.length > 0 && (
+              <Text style={{ ...typography.meta, color: urgency === 'overdue' ? theme.color.overdue : urgency === 'dueSoon' ? theme.color.dueSoon : theme.color.text2 }}>
+                {metaParts.join(' · ')}
+              </Text>
+            )}
             {todo.recurrence && (
               <SymbolView name={REPEAT_ICON} size={12} tintColor={theme.color.text2} />
             )}
+            {tags.map((tag) => (
+              <TagPill key={tag.id} tag={tag} />
+            ))}
           </View>
         )}
       </View>

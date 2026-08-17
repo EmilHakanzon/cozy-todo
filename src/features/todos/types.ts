@@ -17,6 +17,7 @@ export type Todo = {
   dueAt: string | null
   completedAt: string | null
   recurrence: Recurrence | null
+  tagIds: string[]
   createdAt: string
   updatedAt: string
   position: number

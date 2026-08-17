@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SettingsRow } from '@/components/settings-row'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useSettingsStore } from '@/stores/settings-store'
+import { useTagStore } from '@/stores/tag-store'
 import { useThemeStore } from '@/stores/theme-store'
 import { typography } from '@/themes/typography'
 
@@ -26,6 +27,7 @@ const ICONS = {
   language: { ios: 'globe', android: 'language', web: 'language' } as SymbolViewProps['name'],
   calendar: { ios: 'calendar.badge.plus', android: 'event', web: 'event' } as SymbolViewProps['name'],
   import: { ios: 'square.and.arrow.down', android: 'download', web: 'download' } as SymbolViewProps['name'],
+  tags: { ios: 'tag', android: 'label', web: 'label' } as SymbolViewProps['name'],
   weather: { ios: 'cloud.sun', android: 'partly_cloudy_day', web: 'partly_cloudy_day' } as SymbolViewProps['name'],
   reminders: { ios: 'bell', android: 'notifications', web: 'notifications' } as SymbolViewProps['name'],
   dailyPlan: { ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' } as SymbolViewProps['name'],
@@ -61,6 +63,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const themePreference = useThemeStore((s) => s.preference)
   const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled, weatherEnabled, weatherCity } = useSettingsStore()
+  const tagCount = useTagStore((s) => Object.keys(s.tagsById).length)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -121,6 +124,12 @@ export default function SettingsScreen() {
           label="Default view"
           value={VIEW_LABELS[defaultView]}
           onPress={() => router.push('/settings/default-view')}
+        />
+        <SettingsRow
+          icon={ICONS.tags}
+          label="Tags"
+          value={`${tagCount} ${tagCount === 1 ? 'tag' : 'tags'}`}
+          onPress={() => router.push('/settings/tags')}
         />
         <SettingsRow
           icon={ICONS.weather}
