@@ -59,7 +59,7 @@ export default function SettingsScreen() {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const themePreference = useThemeStore((s) => s.preference)
-  const { firstDayOfWeek, timeFormat, defaultView } = useSettingsStore()
+  const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled } = useSettingsStore()
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -146,8 +146,8 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={ICONS.reminders}
           label="Reminders"
-          value="Off"
-          disabled
+          value={remindersEnabled ? 'On' : 'Off'}
+          onPress={() => router.push('/settings/reminders')}
         />
         <SettingsRow
           icon={ICONS.dailyPlan}
