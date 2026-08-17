@@ -9,6 +9,9 @@ import {
   getTodayTodos,
   getTodoProgress,
   getTodosForList,
+  getTodosInDateRange,
+  groupTodosByDate,
+  getTodosForDate,
   getUpcomingTodos,
 } from './selectors'
 import type { Todo, TodoById } from './types'
@@ -161,5 +164,53 @@ describe('getActiveCountForList', () => {
       makeTodo({ id: 'd', listId: PERSONAL }),
     )
     expect(getActiveCountForList(todosById, HOME)).toBe(1)
+  })
+})
+
+describe('getTodosInDateRange', () => {
+  it('returns root todos with dueAt in range', () => {
+    const todosById = makeTodosById(
+      makeTodo({ id: 'a', dueAt: '2026-08-17T09:00:00.000Z', position: 0 }),
+      makeTodo({ id: 'b', dueAt: '2026-08-19T10:00:00.000Z', position: 1 }),
+      makeTodo({ id: 'c', dueAt: '2026-08-25T10:00:00.000Z', position: 2 }),
+      makeTodo({ id: 'd', dueAt: null, position: 3 }),
+      makeTodo({ id: 'e', dueAt: '2026-08-18T08:00:00.000Z', parentId: 'a', position: 0 }),
+    )
+    const result = getTodosInDateRange(todosById, '2026-08-17', '2026-08-23')
+    expect(result.map((t) => t.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('groupTodosByDate', () => {
+  it('groups todos by date string', () => {
+    const todos = [
+      makeTodo({ id: 'a', dueAt: '2026-08-17T09:00:00.000Z' }),
+      makeTodo({ id: 'b', dueAt: '2026-08-17T14:00:00.000Z' }),
+      makeTodo({ id: 'c', dueAt: '2026-08-18T10:00:00.000Z' }),
+    ]
+    const groups = groupTodosByDate(todos)
+    expect(groups.get('2026-08-17')?.map((t) => t.id)).toEqual(['a', 'b'])
+    expect(groups.get('2026-08-18')?.map((t) => t.id)).toEqual(['c'])
+  })
+
+  it('skips todos without dueAt', () => {
+    const todos = [
+      makeTodo({ id: 'a', dueAt: null }),
+      makeTodo({ id: 'b', dueAt: '2026-08-17T09:00:00.000Z' }),
+    ]
+    const groups = groupTodosByDate(todos)
+    expect(groups.size).toBe(1)
+  })
+})
+
+describe('getTodosForDate', () => {
+  it('returns root todos for a specific date', () => {
+    const todosById = makeTodosById(
+      makeTodo({ id: 'a', dueAt: '2026-08-17T09:00:00.000Z', position: 0 }),
+      makeTodo({ id: 'b', dueAt: '2026-08-18T10:00:00.000Z', position: 1 }),
+      makeTodo({ id: 'c', dueAt: '2026-08-17T14:00:00.000Z', parentId: 'a', position: 0 }),
+    )
+    const result = getTodosForDate(todosById, '2026-08-17')
+    expect(result.map((t) => t.id)).toEqual(['a'])
   })
 })

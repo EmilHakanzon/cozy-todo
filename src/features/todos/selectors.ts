@@ -78,7 +78,41 @@ export function getTodoCountForList(
   todosById:TodoById,
   listId: TodoListId,
 ): number {
-  return Object.values(todosById).filter((todo) => 
+  return Object.values(todosById).filter((todo) =>
   todo.listId === listId &&
 todo.parentId === null,).length;
+}
+
+export function getTodosInDateRange(
+  todosById: TodoById,
+  startDate: string,
+  endDate: string,
+): Todo[] {
+  return sortByPosition(
+    Object.values(todosById).filter((todo) => {
+      if (!todo.dueAt || todo.parentId !== null) return false
+      const dueDate = todo.dueAt.split('T')[0]
+      return dueDate >= startDate && dueDate <= endDate
+    }),
+  )
+}
+
+export function groupTodosByDate(todos: Todo[]): Map<string, Todo[]> {
+  const groups = new Map<string, Todo[]>()
+  for (const todo of todos) {
+    if (!todo.dueAt) continue
+    const dateStr = todo.dueAt.split('T')[0]
+    const existing = groups.get(dateStr) ?? []
+    existing.push(todo)
+    groups.set(dateStr, existing)
+  }
+  return groups
+}
+
+export function getTodosForDate(todosById: TodoById, dateStr: string): Todo[] {
+  return sortByPosition(
+    Object.values(todosById).filter(
+      (todo) => todo.parentId === null && todo.dueAt?.startsWith(dateStr),
+    ),
+  )
 }
