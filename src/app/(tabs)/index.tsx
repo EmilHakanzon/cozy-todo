@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
-import { FlatList, Text, View } from 'react-native'
+import { FlatList, Pressable, Text, View } from 'react-native'
+import { router } from 'expo-router'
+import { SymbolView } from 'expo-symbols'
 
 import { InlineQuickAdd } from '@/components/quick-add'
 import { ScreenHeader } from '@/components/screen-header'
@@ -15,6 +17,14 @@ import {
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
+
+import type { SymbolViewProps } from 'expo-symbols'
+
+const SETTINGS_ICON: SymbolViewProps['name'] = {
+  ios: 'gearshape',
+  android: 'settings',
+  web: 'settings',
+}
 
 type Filter = 'today' | 'upcoming' | 'all'
 
@@ -73,7 +83,19 @@ export default function TodayScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
-      <ScreenHeader title="Today" subtitle={dateStr} />
+      <ScreenHeader
+        title="Today"
+        subtitle={dateStr}
+        rightAction={
+          <Pressable
+            onPress={() => router.push('/settings')}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+          >
+            <SymbolView name={SETTINGS_ICON} size={22} tintColor={theme.color.text2} />
+          </Pressable>
+        }
+      />
 
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}>
         <SegmentedControl segments={SEGMENTS} value={filter} onChange={setFilter} />
