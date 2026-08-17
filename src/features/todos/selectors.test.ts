@@ -28,6 +28,7 @@ function makeTodo(todo: Partial<Todo> & Pick<Todo, 'id'>): Todo {
     notes: '',
     dueAt: null,
     completedAt: null,
+    recurrence: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     position: 0,

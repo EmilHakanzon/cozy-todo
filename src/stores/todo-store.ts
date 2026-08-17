@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { Todo, TodoId, TodoListId } from '@/features/todos/types'
 import { getDescendantIds, isDescendant } from '@/features/todos/todo-tree'
 import { createId } from '@/lib/create-id'
+import { computeNextDueDate } from '@/lib/recurrence'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -14,7 +15,7 @@ type CreateTodoInput = {
   notes?: string
   dueAt?: string | null
 }
-type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt'>>
+type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt' | 'recurrence'>>
 
 type TodoState = {
   todosById: Record<TodoId, Todo>
@@ -74,6 +75,7 @@ export const useTodoStore = create<TodoState>()(
 
       dueAt: input.dueAt ?? null,
       completedAt: null,
+      recurrence: null,
 
       position,
 
@@ -126,15 +128,26 @@ export const useTodoStore = create<TodoState>()(
     }
 
     const now = new Date().toISOString()
-    const updateTodo: Todo = {
-      ...existing,
-      completedAt: existing.completedAt ? null : now,
-      updatedAt: now,
+
+    if (!existing.completedAt && existing.recurrence && existing.dueAt) {
+      const nextDueAt = computeNextDueDate(existing.dueAt, existing.recurrence)
+      set((state) => ({
+        todosById: {
+          ...state.todosById,
+          [id]: { ...existing, dueAt: nextDueAt, updatedAt: now },
+        },
+      }))
+      return
     }
+
     set((state) => ({
       todosById: {
         ...state.todosById,
-        [id]: updateTodo,
+        [id]: {
+          ...existing,
+          completedAt: existing.completedAt ? null : now,
+          updatedAt: now,
+        },
       },
     }))
   },

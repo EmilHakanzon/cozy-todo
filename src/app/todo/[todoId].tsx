@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DateTimePicker } from '@/components/date-time-picker'
 import { ListPicker } from '@/components/list-picker'
+import { RecurrencePicker } from '@/components/recurrence-picker'
 import { TodoCheckbox } from '@/components/todo-checkbox'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { InlineQuickAdd } from '@/components/quick-add'
@@ -26,6 +27,7 @@ import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
+import type { Recurrence } from '@/features/todos/types'
 
 const BACK_ICON: SymbolViewProps['name'] = {
   ios: 'chevron.left',
@@ -41,6 +43,11 @@ const LIST_ICON: SymbolViewProps['name'] = {
   ios: 'list.bullet',
   android: 'format_list_bulleted',
   web: 'format_list_bulleted',
+}
+const REPEAT_ICON: SymbolViewProps['name'] = {
+  ios: 'repeat',
+  android: 'repeat',
+  web: 'repeat',
 }
 const TRASH_ICON: SymbolViewProps['name'] = {
   ios: 'trash',
@@ -65,6 +72,7 @@ export default function TodoDetailScreen() {
   const [notes, setNotes] = useState(todo?.notes ?? '')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showListPicker, setShowListPicker] = useState(false)
+  const [showRecurrence, setShowRecurrence] = useState(false)
 
   const titleRef = useRef<TextInput>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -136,6 +144,14 @@ export default function TodoDetailScreen() {
     [todo, changeList],
   )
 
+  const handleRecurrenceChange = useCallback(
+    (value: Recurrence | null) => {
+      if (!todo) return
+      updateTodo(todo.id, { recurrence: value })
+    },
+    [todo, updateTodo],
+  )
+
   const handleDelete = useCallback(() => {
     if (!todo) return
     Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
@@ -159,6 +175,14 @@ export default function TodoDetailScreen() {
   if (!todo) return null
 
   const isCompleted = todo.completedAt !== null
+
+  const recurrenceLabel = (() => {
+    if (!todo.recurrence) return 'None'
+    const { frequency, interval } = todo.recurrence
+    if (frequency === 'weekly' && interval === 2) return 'Biweekly'
+    if (interval === 1) return frequency.charAt(0).toUpperCase() + frequency.slice(1)
+    return `Every ${interval} ${frequency.replace('ly', '')}s`
+  })()
 
   const dueLabel = todo.dueAt
     ? new Date(todo.dueAt).toLocaleDateString('en-US', {
@@ -301,6 +325,31 @@ export default function TodoDetailScreen() {
               {list?.name ?? 'Unknown list'}
             </Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => setShowRecurrence(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.spacing.sm,
+              backgroundColor: theme.color.surfaceSoft,
+              borderRadius: theme.radius.md,
+              paddingHorizontal: theme.spacing.md,
+              paddingVertical: theme.spacing.sm,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <SymbolView name={REPEAT_ICON} size={20} tintColor={theme.color.text2} />
+            <Text
+              style={{
+                ...typography.body,
+                flex: 1,
+                color: todo.recurrence ? theme.color.text : theme.color.text2,
+              }}
+            >
+              {recurrenceLabel}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={{ paddingTop: theme.spacing.lg }}>
@@ -380,6 +429,13 @@ export default function TodoDetailScreen() {
         currentListId={todo.listId}
         onSelect={handleListSelect}
         onCancel={() => setShowListPicker(false)}
+      />
+
+      <RecurrencePicker
+        visible={showRecurrence}
+        value={todo.recurrence}
+        onChange={handleRecurrenceChange}
+        onClose={() => setShowRecurrence(false)}
       />
     </View>
   )

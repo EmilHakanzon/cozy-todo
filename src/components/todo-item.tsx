@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
+import { SymbolView } from 'expo-symbols'
 
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useListStore } from '@/stores/list-store'
@@ -9,7 +10,10 @@ import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
 import { TodoCheckbox } from './todo-checkbox'
 
+import type { SymbolViewProps } from 'expo-symbols'
 import type { Todo, TodoId } from '@/features/todos/types'
+
+const REPEAT_ICON: SymbolViewProps['name'] = { ios: 'repeat', android: 'repeat', web: 'repeat' }
 
 type TodoItemProps = {
   todo: Todo
@@ -70,7 +74,7 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
         >
           {todo.title}
         </Text>
-        {metaParts.length > 0 && (
+        {(metaParts.length > 0 || todo.recurrence) && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.micro, marginTop: 2 }}>
             {showListName && listColor && (
               <View
@@ -85,6 +89,9 @@ export function TodoItem({ todo, onToggle, onPress, showListName = false }: Todo
             <Text style={{ ...typography.meta, color: theme.color.text2 }}>
               {metaParts.join(' · ')}
             </Text>
+            {todo.recurrence && (
+              <SymbolView name={REPEAT_ICON} size={12} tintColor={theme.color.text2} />
+            )}
           </View>
         )}
       </View>
