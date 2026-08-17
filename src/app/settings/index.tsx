@@ -133,7 +133,7 @@ export default function SettingsScreen() {
           icon={ICONS.calendar}
           label="Google Calendar"
           value="Not connected"
-          disabled
+          onPress={() => router.push('/settings/google-calendar')}
         />
         <SettingsRow
           icon={ICONS.import}
