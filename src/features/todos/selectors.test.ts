@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
   getActiveTodos,
+  getActiveCountForList,
+  getAllRootTodos,
   getCompletedTodos,
   getRootTodos,
+  getTodayTodos,
   getTodoProgress,
   getTodosForList,
+  getUpcomingTodos,
 } from './selectors'
 import type { Todo, TodoById } from './types'
 
@@ -106,5 +110,56 @@ describe('getTodoProgress', () => {
     const todosById = makeTodosById(makeTodo({ id: 'ensam' }))
 
     expect(getTodoProgress(todosById, 'ensam')).toEqual({ total: 0, completed: 0 })
+  })
+})
+
+describe('getAllRootTodos', () => {
+  it('returns only root todos across all lists, sorted by position', () => {
+    const todosById = makeTodosById(
+      makeTodo({ id: 'a', position: 1 }),
+      makeTodo({ id: 'b', position: 0 }),
+      makeTodo({ id: 'c', parentId: 'a', position: 0 }),
+      makeTodo({ id: 'd', listId: PERSONAL, position: 0 }),
+    )
+    const result = getAllRootTodos(todosById)
+    expect(result.map((t) => t.id)).toEqual(['b', 'd', 'a'])
+  })
+})
+
+describe('getTodayTodos', () => {
+  it('returns todos due today', () => {
+    const today = new Date().toISOString().split('T')[0]
+    const todos = [
+      makeTodo({ id: 'a', dueAt: `${today}T18:00:00.000Z` }),
+      makeTodo({ id: 'b', dueAt: '2099-12-31T00:00:00.000Z' }),
+      makeTodo({ id: 'c', dueAt: null }),
+    ]
+    const result = getTodayTodos(todos)
+    expect(result.map((t) => t.id)).toEqual(['a'])
+  })
+})
+
+describe('getUpcomingTodos', () => {
+  it('returns todos due after today', () => {
+    const today = new Date().toISOString().split('T')[0]
+    const todos = [
+      makeTodo({ id: 'a', dueAt: `${today}T18:00:00.000Z` }),
+      makeTodo({ id: 'b', dueAt: '2099-12-31T00:00:00.000Z' }),
+      makeTodo({ id: 'c', dueAt: null }),
+    ]
+    const result = getUpcomingTodos(todos)
+    expect(result.map((t) => t.id)).toEqual(['b'])
+  })
+})
+
+describe('getActiveCountForList', () => {
+  it('counts only active root todos in a list', () => {
+    const todosById = makeTodosById(
+      makeTodo({ id: 'a', listId: HOME }),
+      makeTodo({ id: 'b', listId: HOME, completedAt: '2026-01-01T00:00:00.000Z' }),
+      makeTodo({ id: 'c', listId: HOME, parentId: 'a' }),
+      makeTodo({ id: 'd', listId: PERSONAL }),
+    )
+    expect(getActiveCountForList(todosById, HOME)).toBe(1)
   })
 })

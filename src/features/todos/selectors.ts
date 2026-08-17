@@ -43,6 +43,37 @@ export function getTodoProgress(todosById: TodoById, parentId: TodoId): TodoProg
 }
 
 
+export function getAllRootTodos(todosById: TodoById): Todo[] {
+  return sortByPosition(
+    Object.values(todosById).filter((todo) => todo.parentId === null)
+  )
+}
+
+export function getTodayTodos(todos: Todo[]): Todo[] {
+  const today = new Date().toISOString().split('T')[0]
+  return todos.filter((todo) => todo.dueAt?.startsWith(today))
+}
+
+export function getUpcomingTodos(todos: Todo[]): Todo[] {
+  const todayStr = new Date().toISOString().split('T')[0]
+  return todos.filter((todo) => {
+    if (!todo.dueAt) return false
+    return todo.dueAt.split('T')[0] > todayStr
+  })
+}
+
+export function getActiveCountForList(
+  todosById: TodoById,
+  listId: TodoListId,
+): number {
+  return Object.values(todosById).filter(
+    (todo) =>
+      todo.listId === listId &&
+      todo.parentId === null &&
+      todo.completedAt === null,
+  ).length
+}
+
 export function getTodoCountForList(
   todosById:TodoById,
   listId: TodoListId,

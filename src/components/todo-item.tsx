@@ -1,0 +1,89 @@
+import { Text, View } from 'react-native'
+
+import { useAppTheme } from '@/hooks/use-app-theme'
+import { useListStore } from '@/stores/list-store'
+import { useTodoStore } from '@/stores/todo-store'
+import { getTodoProgress } from '@/features/todos/selectors'
+import { getChildren } from '@/features/todos/todo-tree'
+import { listColorsFor } from '@/themes/list-color'
+import { typography } from '@/themes/typography'
+import { TodoCheckbox } from './todo-checkbox'
+
+import type { Todo, TodoId } from '@/features/todos/types'
+
+type TodoItemProps = {
+  todo: Todo
+  onToggle: (id: TodoId) => void
+  showListName?: boolean
+}
+
+export function TodoItem({ todo, onToggle, showListName = false }: TodoItemProps) {
+  const { theme, resolvedTheme } = useAppTheme()
+  const list = useListStore((s) => s.listsById[todo.listId])
+  const todosById = useTodoStore((s) => s.todosById)
+  const children = getChildren(todosById, todo.id)
+  const isCompleted = todo.completedAt !== null
+  const hasChildren = children.length > 0
+
+  const listColors = listColorsFor(resolvedTheme)
+  const listColor = list ? listColors[list.color] : null
+
+  const metaParts: string[] = []
+  if (showListName && list) metaParts.push(list.name)
+  if (todo.dueAt) {
+    const date = new Date(todo.dueAt)
+    const today = new Date()
+    const isToday =
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    metaParts.push(isToday ? `Today · ${timeStr}` : date.toLocaleDateString())
+  }
+  if (hasChildren) {
+    const progress = getTodoProgress(todosById, todo.id)
+    metaParts.push(`${progress.completed} of ${progress.total}`)
+  }
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: theme.spacing.sm,
+        gap: theme.spacing.sm,
+      }}
+    >
+      <TodoCheckbox checked={isCompleted} onToggle={() => onToggle(todo.id)} />
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            ...typography.taskTitle,
+            color: isCompleted ? theme.color.text2 : theme.color.text,
+            textDecorationLine: isCompleted ? 'line-through' : 'none',
+          }}
+          numberOfLines={2}
+        >
+          {todo.title}
+        </Text>
+        {metaParts.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.micro, marginTop: 2 }}>
+            {showListName && listColor && (
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: listColor.accent,
+                }}
+              />
+            )}
+            <Text style={{ ...typography.meta, color: theme.color.text2 }}>
+              {metaParts.join(' · ')}
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  )
+}
