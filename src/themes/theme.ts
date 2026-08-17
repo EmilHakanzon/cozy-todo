@@ -1,17 +1,26 @@
-import { darkColors, lightColors } from "./colors";
-import { radius } from "./radius";
-import { spacing } from "./spacing";
+import { lightColors, darkColors } from './colors'
+import { buildAccentColors } from './list-color'
+import { radius } from './radius'
+import { spacing } from './spacing'
 
-export type ResolvedTheme = 'light' | 'dark';
+import type { TodoListColor } from '@/features/lists/types'
 
-export const lightTheme = {
-  color: lightColors,
-  spacing,
-  radius
-} as const;
+export type ResolvedTheme = 'light' | 'dark'
 
-export const darkTheme = {
-  color: darkColors,
-  spacing,
-  radius
-} as const;
+export function buildTheme(resolvedTheme: ResolvedTheme, accentColor: TodoListColor) {
+  const baseColors = resolvedTheme === 'dark' ? darkColors : lightColors
+  const accentPair = buildAccentColors(accentColor, resolvedTheme)
+
+  return {
+    color: {
+      ...baseColors,
+      accent: accentPair.accent,
+      accentSoft: accentPair.accentSoft,
+    },
+    spacing,
+    radius,
+  } as const
+}
+
+export const lightTheme = buildTheme('light', 'sage')
+export const darkTheme = buildTheme('dark', 'sage')

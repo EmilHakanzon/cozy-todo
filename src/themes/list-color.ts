@@ -75,3 +75,11 @@ export const darkListColors: Record<TodoListColor, ListColorPalette> = {
 export function listColorsFor(resolvedTheme: ResolvedTheme): Record<TodoListColor, ListColorPalette> {
   return resolvedTheme === 'dark' ? darkListColors : lightListColors
 }
+
+export function buildAccentColors(color: TodoListColor, mode: 'light' | 'dark') {
+  const palette = mode === 'dark' ? darkListColors : lightListColors
+  return {
+    accent: palette[color].accent,
+    accentSoft: palette[color].background,
+  }
+}
