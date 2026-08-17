@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { FlatList } from 'react-native-gesture-handler'
@@ -133,10 +133,10 @@ export default function SearchScreen() {
       </View>
 
       {tags.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
             paddingHorizontal: theme.spacing.lg,
             gap: theme.spacing.xs,
             paddingBottom: theme.spacing.sm,
@@ -150,19 +150,28 @@ export default function SearchScreen() {
                 key={tag.id}
                 onPress={() => toggleTagFilter(tag.id)}
                 style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
                   paddingHorizontal: theme.spacing.sm,
-                  paddingVertical: theme.spacing.micro,
+                  paddingVertical: 6,
                   borderRadius: theme.radius.full,
                   backgroundColor: isActive ? palette.background : theme.color.surfaceSoft,
-                  borderWidth: isActive ? 1 : 0,
-                  borderColor: palette.text,
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: palette.text,
+                  }}
+                />
                 <Text
                   style={{
                     ...typography.meta,
-                    color: isActive ? palette.text : theme.color.text2,
+                    color: isActive ? palette.text : theme.color.text,
                   }}
                 >
                   {tag.name}
@@ -170,7 +179,7 @@ export default function SearchScreen() {
               </Pressable>
             )
           })}
-        </ScrollView>
+        </View>
       )}
 
       <FlatList
