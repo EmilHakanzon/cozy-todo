@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { EditListSheet } from '@/components/edit-list-sheet'
 import { InlineQuickAdd } from '@/components/quick-add'
 import { SegmentedControl } from '@/components/segmented-control'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
@@ -27,6 +28,7 @@ const SEGMENTS = [
 
 const BACK_ICON: SymbolViewProps['name'] = { ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }
 const LIST_ICON: SymbolViewProps['name'] = { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' }
+const EDIT_ICON: SymbolViewProps['name'] = { ios: 'pencil', android: 'edit', web: 'edit' }
 const ARROW_UP: SymbolViewProps['name'] = { ios: 'chevron.up', android: 'keyboard_arrow_up', web: 'keyboard_arrow_up' }
 const ARROW_DOWN: SymbolViewProps['name'] = { ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }
 
@@ -44,6 +46,7 @@ export default function ListDetailScreen() {
   const reorderTodo = useTodoStore((s) => s.reorderTodo)
   const [filter, setFilter] = useState<ListFilter>('all')
   const [reorderingId, setReorderingId] = useState<string | null>(null)
+  const [showEditSheet, setShowEditSheet] = useState(false)
 
   const handleTodoPress = useCallback(
     (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
@@ -112,7 +115,7 @@ export default function ListDetailScreen() {
             >
               <SymbolView name={LIST_ICON} size={18} tintColor={palette.accent} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={{ ...typography.screenTitle, fontSize: 24, color: theme.color.text }}>
                 {list.name}
               </Text>
@@ -120,6 +123,13 @@ export default function ListDetailScreen() {
                 {rootTodos.length} {rootTodos.length === 1 ? 'task' : 'tasks'}
               </Text>
             </View>
+            <Pressable
+              onPress={() => setShowEditSheet(true)}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SymbolView name={EDIT_ICON} size={20} tintColor={theme.color.text2} />
+            </Pressable>
           </View>
         </View>
 
@@ -229,6 +239,14 @@ export default function ListDetailScreen() {
           filter !== 'completed' ? <InlineQuickAdd listId={listId} /> : null
         }
       />
+
+      {list && (
+        <EditListSheet
+          visible={showEditSheet}
+          list={list}
+          onClose={() => setShowEditSheet(false)}
+        />
+      )}
     </View>
   )
 }
