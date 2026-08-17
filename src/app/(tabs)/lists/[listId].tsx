@@ -27,6 +27,8 @@ const SEGMENTS = [
 
 const BACK_ICON: SymbolViewProps['name'] = { ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }
 const LIST_ICON: SymbolViewProps['name'] = { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' }
+const ARROW_UP: SymbolViewProps['name'] = { ios: 'chevron.up', android: 'keyboard_arrow_up', web: 'keyboard_arrow_up' }
+const ARROW_DOWN: SymbolViewProps['name'] = { ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }
 
 type SectionItem =
   | { type: 'header'; label: string }
@@ -39,7 +41,9 @@ export default function ListDetailScreen() {
   const list = useListStore((s) => s.listsById[listId])
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
+  const reorderTodo = useTodoStore((s) => s.reorderTodo)
   const [filter, setFilter] = useState<ListFilter>('all')
+  const [reorderingId, setReorderingId] = useState<string | null>(null)
 
   const handleTodoPress = useCallback(
     (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
@@ -144,7 +148,75 @@ export default function ListDetailScreen() {
               </Text>
             )
           }
-          return <SwipeableTodoItem todo={item.todo} onToggle={toggleTodo} onPress={handleTodoPress} />
+          const isReordering = reorderingId === item.todo.id
+          const todoIndex = activeTodos.findIndex((t) => t.id === item.todo.id)
+
+          return (
+            <View>
+              <Pressable
+                onLongPress={() =>
+                  setReorderingId((prev) => (prev === item.todo.id ? null : item.todo.id))
+                }
+              >
+                <SwipeableTodoItem
+                  todo={item.todo}
+                  onToggle={toggleTodo}
+                  onPress={handleTodoPress}
+                />
+              </Pressable>
+              {isReordering && todoIndex !== -1 && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: theme.spacing.sm,
+                    paddingBottom: theme.spacing.xs,
+                  }}
+                >
+                  <Pressable
+                    disabled={todoIndex === 0}
+                    onPress={() => {
+                      reorderTodo(item.todo.id, todoIndex - 1)
+                      setReorderingId(null)
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: theme.spacing.micro,
+                      backgroundColor: theme.color.surfaceSoft,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.xs,
+                      borderRadius: theme.radius.full,
+                      opacity: pressed ? 0.7 : todoIndex === 0 ? 0.4 : 1,
+                    })}
+                  >
+                    <SymbolView name={ARROW_UP} size={16} tintColor={theme.color.text2} />
+                    <Text style={{ ...typography.meta, color: theme.color.text2 }}>Move up</Text>
+                  </Pressable>
+                  <Pressable
+                    disabled={todoIndex === activeTodos.length - 1}
+                    onPress={() => {
+                      reorderTodo(item.todo.id, todoIndex + 1)
+                      setReorderingId(null)
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: theme.spacing.micro,
+                      backgroundColor: theme.color.surfaceSoft,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.xs,
+                      borderRadius: theme.radius.full,
+                      opacity: pressed ? 0.7 : todoIndex === activeTodos.length - 1 ? 0.4 : 1,
+                    })}
+                  >
+                    <SymbolView name={ARROW_DOWN} size={16} tintColor={theme.color.text2} />
+                    <Text style={{ ...typography.meta, color: theme.color.text2 }}>Move down</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          )
         }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>

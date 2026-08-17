@@ -24,6 +24,7 @@ type TodoState = {
   deleteTodo: (id: TodoId) => void
   moveTodo: (ind: TodoId,targetParentId: TodoId | null) => void;
   changeList: (id: TodoId, newListId: TodoListId) => void;
+  reorderTodo: (id: TodoId, newPosition: number) => void;
 }
 
 export const useTodoStore = create<TodoState>()(
@@ -246,6 +247,33 @@ export const useTodoStore = create<TodoState>()(
         next[descId] = { ...next[descId], listId: newListId, updatedAt: now }
       }
 
+      return { todosById: next }
+    })
+  },
+  reorderTodo: (id, newPosition) => {
+    const todosById = get().todosById
+    const todo = todosById[id]
+
+    if (!todo) throw new Error('Todo does not exist')
+
+    const siblings = Object.values(todosById)
+      .filter(
+        (t) =>
+          t.listId === todo.listId &&
+          t.parentId === todo.parentId &&
+          t.id !== id,
+      )
+      .sort((a, b) => a.position - b.position)
+
+    siblings.splice(newPosition, 0, todo)
+
+    const now = new Date().toISOString()
+
+    set((state) => {
+      const next = { ...state.todosById }
+      siblings.forEach((t, i) => {
+        next[t.id] = { ...next[t.id], position: i, updatedAt: now }
+      })
       return { todosById: next }
     })
   },
