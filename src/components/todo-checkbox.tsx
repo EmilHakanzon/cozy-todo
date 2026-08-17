@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { SymbolView } from 'expo-symbols'
 
 import { useAppTheme } from '@/hooks/use-app-theme'
@@ -17,9 +18,14 @@ const CHECK_ICON: SymbolViewProps['name'] = { ios: 'checkmark', android: 'check'
 export function TodoCheckbox({ checked, onToggle }: TodoCheckboxProps) {
   const { theme } = useAppTheme()
 
+  const handleToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    onToggle()
+  }
+
   return (
     <Pressable
-      onPress={onToggle}
+      onPress={handleToggle}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       hitSlop={8}

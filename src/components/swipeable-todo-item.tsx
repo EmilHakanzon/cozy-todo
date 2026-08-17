@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { SymbolView } from 'expo-symbols'
 import ReanimatedSwipeable, {
   type SwipeableMethods,
@@ -50,6 +51,7 @@ export function SwipeableTodoItem({
   const isCompleted = todo.completedAt !== null
 
   const handleDelete = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
     Alert.alert('Delete Task', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
       {
@@ -61,6 +63,7 @@ export function SwipeableTodoItem({
   }, [todo.id, deleteTodo])
 
   const handleToggle = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     onToggle(todo.id)
     swipeableRef.current?.close()
   }, [todo.id, onToggle])
