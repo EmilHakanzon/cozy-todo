@@ -13,6 +13,7 @@ import {
   groupTodosByDate,
   getTodosForDate,
   getUpcomingTodos,
+  searchTodos,
 } from './selectors'
 import type { Todo, TodoById } from './types'
 
@@ -212,5 +213,40 @@ describe('getTodosForDate', () => {
     )
     const result = getTodosForDate(todosById, '2026-08-17')
     expect(result.map((t) => t.id)).toEqual(['a'])
+  })
+})
+
+describe('searchTodos', () => {
+  const searchData = makeTodosById(
+    makeTodo({ id: 'todo-1', title: 'Buy groceries', notes: 'milk, eggs, bread' }),
+    makeTodo({ id: 'todo-2', title: 'Clean kitchen', notes: '' }),
+    makeTodo({ id: 'todo-3', title: 'Write report', notes: 'quarterly review for grocery division', listId: PERSONAL }),
+  )
+
+  it('matches title case-insensitively', () => {
+    const results = searchTodos(searchData, 'groceries')
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe('todo-1')
+  })
+
+  it('matches notes content', () => {
+    const results = searchTodos(searchData, 'quarterly')
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe('todo-3')
+  })
+
+  it('returns empty for no match', () => {
+    expect(searchTodos(searchData, 'zzzzz')).toHaveLength(0)
+  })
+
+  it('returns empty for blank query', () => {
+    expect(searchTodos(searchData, '')).toHaveLength(0)
+    expect(searchTodos(searchData, '  ')).toHaveLength(0)
+  })
+
+  it('matches partial words', () => {
+    const results = searchTodos(searchData, 'clean')
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe('todo-2')
   })
 })

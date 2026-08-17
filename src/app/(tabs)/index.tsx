@@ -20,6 +20,11 @@ import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
 
+const SEARCH_ICON: SymbolViewProps['name'] = {
+  ios: 'magnifyingglass',
+  android: 'search',
+  web: 'search',
+}
 const SETTINGS_ICON: SymbolViewProps['name'] = {
   ios: 'gearshape',
   android: 'settings',
@@ -92,13 +97,22 @@ export default function TodayScreen() {
         title="Today"
         subtitle={dateStr}
         rightAction={
-          <Pressable
-            onPress={() => router.push('/settings')}
-            hitSlop={8}
-            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-          >
-            <SymbolView name={SETTINGS_ICON} size={22} tintColor={theme.color.text2} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <Pressable
+              onPress={() => router.push('/search')}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SymbolView name={SEARCH_ICON} size={22} tintColor={theme.color.text2} />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SymbolView name={SETTINGS_ICON} size={22} tintColor={theme.color.text2} />
+            </Pressable>
+          </View>
         }
       />
 

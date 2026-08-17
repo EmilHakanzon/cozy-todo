@@ -116,3 +116,14 @@ export function getTodosForDate(todosById: TodoById, dateStr: string): Todo[] {
     ),
   )
 }
+
+export function searchTodos(todosById: TodoById, query: string): Todo[] {
+  const trimmed = query.trim().toLowerCase()
+  if (!trimmed) return []
+
+  return Object.values(todosById).filter(
+    (todo) =>
+      todo.title.toLowerCase().includes(trimmed) ||
+      todo.notes.toLowerCase().includes(trimmed),
+  )
+}
