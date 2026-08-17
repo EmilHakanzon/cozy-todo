@@ -13,6 +13,7 @@ import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { DateTimePicker } from '@/components/date-time-picker'
+import { SubtaskGroup } from '@/components/subtask-group'
 import { ListPicker } from '@/components/list-picker'
 import { RecurrencePicker } from '@/components/recurrence-picker'
 import { TodoCheckbox } from '@/components/todo-checkbox'
@@ -401,7 +402,7 @@ export default function TodoDetailScreen() {
           </View>
 
           {children.length > 0 && (
-            <View>
+            <SubtaskGroup>
               {children.map((child) => (
                 <SwipeableTodoItem
                   key={child.id}
@@ -410,7 +411,7 @@ export default function TodoDetailScreen() {
                   onPress={handleSubtaskPress}
                 />
               ))}
-            </View>
+            </SubtaskGroup>
           )}
 
           <InlineQuickAdd listId={todo.listId} parentId={todo.id} />
