@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { DraggableTodoList } from '@/components/draggable-todo-list'
 import { EditListSheet } from '@/components/edit-list-sheet'
 import { InlineQuickAdd } from '@/components/quick-add'
 import { SegmentedControl } from '@/components/segmented-control'
@@ -16,7 +17,6 @@ import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
-import type { Todo } from '@/features/todos/types'
 
 type ListFilter = 'all' | 'active' | 'completed'
 
@@ -29,12 +29,6 @@ const SEGMENTS = [
 const BACK_ICON: SymbolViewProps['name'] = { ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }
 const LIST_ICON: SymbolViewProps['name'] = { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' }
 const EDIT_ICON: SymbolViewProps['name'] = { ios: 'pencil', android: 'edit', web: 'edit' }
-const ARROW_UP: SymbolViewProps['name'] = { ios: 'chevron.up', android: 'keyboard_arrow_up', web: 'keyboard_arrow_up' }
-const ARROW_DOWN: SymbolViewProps['name'] = { ios: 'chevron.down', android: 'keyboard_arrow_down', web: 'keyboard_arrow_down' }
-
-type SectionItem =
-  | { type: 'header'; label: string }
-  | { type: 'todo'; todo: Todo }
 
 export default function ListDetailScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>()
@@ -45,7 +39,6 @@ export default function ListDetailScreen() {
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
   const reorderTodo = useTodoStore((s) => s.reorderTodo)
   const [filter, setFilter] = useState<ListFilter>('all')
-  const [reorderingId, setReorderingId] = useState<string | null>(null)
   const [showEditSheet, setShowEditSheet] = useState(false)
 
   const handleTodoPress = useCallback(
@@ -56,6 +49,14 @@ export default function ListDetailScreen() {
   const rootTodos = useMemo(() => getRootTodos(todosById, listId), [todosById, listId])
   const activeTodos = useMemo(() => getActiveTodos(rootTodos), [rootTodos])
   const completedTodos = useMemo(() => getCompletedTodos(rootTodos), [rootTodos])
+
+  const handleReorder = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      const todo = activeTodos[fromIndex]
+      if (todo) reorderTodo(todo.id, toIndex)
+    },
+    [activeTodos, reorderTodo],
+  )
 
   const displayedTodos = useMemo(() => {
     switch (filter) {
@@ -72,22 +73,6 @@ export default function ListDetailScreen() {
 
   const listColors = listColorsFor(resolvedTheme)
   const palette = listColors[list.color]
-
-  const sections: SectionItem[] = (() => {
-    if (filter !== 'all') {
-      return displayedTodos.map((todo) => ({ type: 'todo' as const, todo }))
-    }
-    return [
-      ...(activeTodos.length > 0
-        ? [{ type: 'header' as const, label: `ACTIVE (${activeTodos.length})` }]
-        : []),
-      ...activeTodos.map((todo) => ({ type: 'todo' as const, todo })),
-      ...(completedTodos.length > 0
-        ? [{ type: 'header' as const, label: `COMPLETED (${completedTodos.length})` }]
-        : []),
-      ...completedTodos.map((todo) => ({ type: 'todo' as const, todo })),
-    ]
-  })()
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -136,109 +121,74 @@ export default function ListDetailScreen() {
         <SegmentedControl segments={SEGMENTS} value={filter} onChange={setFilter} />
       </View>
 
-      <FlatList
-        data={sections}
-        keyExtractor={(item, index) => (item.type === 'todo' ? item.todo.id : `header-${index}`)}
+      <ScrollView
         contentContainerStyle={{
           paddingHorizontal: theme.spacing.lg,
           paddingBottom: 120,
         }}
-        renderItem={({ item }) => {
-          if (item.type === 'header') {
-            return (
-              <Text
-                style={{
-                  ...typography.sectionTitle,
-                  color: theme.color.text2,
-                  paddingTop: theme.spacing.lg,
-                  paddingBottom: theme.spacing.xs,
-                }}
-              >
-                {item.label}
-              </Text>
-            )
-          }
-          const isReordering = reorderingId === item.todo.id
-          const todoIndex = activeTodos.findIndex((t) => t.id === item.todo.id)
+      >
+        {filter === 'all' && activeTodos.length > 0 && (
+          <Text
+            style={{
+              ...typography.sectionTitle,
+              color: theme.color.text2,
+              paddingTop: theme.spacing.lg,
+              paddingBottom: theme.spacing.xs,
+            }}
+          >
+            {`ACTIVE (${activeTodos.length})`}
+          </Text>
+        )}
 
-          return (
-            <View>
-              <Pressable
-                onLongPress={() =>
-                  setReorderingId((prev) => (prev === item.todo.id ? null : item.todo.id))
-                }
-              >
-                <SwipeableTodoItem
-                  todo={item.todo}
-                  onToggle={toggleTodo}
-                  onPress={handleTodoPress}
-                />
-              </Pressable>
-              {isReordering && todoIndex !== -1 && (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'center',
-                    gap: theme.spacing.sm,
-                    paddingBottom: theme.spacing.xs,
-                  }}
-                >
-                  <Pressable
-                    disabled={todoIndex === 0}
-                    onPress={() => {
-                      reorderTodo(item.todo.id, todoIndex - 1)
-                      setReorderingId(null)
-                    }}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: theme.spacing.micro,
-                      backgroundColor: theme.color.surfaceSoft,
-                      paddingHorizontal: theme.spacing.md,
-                      paddingVertical: theme.spacing.xs,
-                      borderRadius: theme.radius.full,
-                      opacity: pressed ? 0.7 : todoIndex === 0 ? 0.4 : 1,
-                    })}
-                  >
-                    <SymbolView name={ARROW_UP} size={16} tintColor={theme.color.text2} />
-                    <Text style={{ ...typography.meta, color: theme.color.text2 }}>Move up</Text>
-                  </Pressable>
-                  <Pressable
-                    disabled={todoIndex === activeTodos.length - 1}
-                    onPress={() => {
-                      reorderTodo(item.todo.id, todoIndex + 1)
-                      setReorderingId(null)
-                    }}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: theme.spacing.micro,
-                      backgroundColor: theme.color.surfaceSoft,
-                      paddingHorizontal: theme.spacing.md,
-                      paddingVertical: theme.spacing.xs,
-                      borderRadius: theme.radius.full,
-                      opacity: pressed ? 0.7 : todoIndex === activeTodos.length - 1 ? 0.4 : 1,
-                    })}
-                  >
-                    <SymbolView name={ARROW_DOWN} size={16} tintColor={theme.color.text2} />
-                    <Text style={{ ...typography.meta, color: theme.color.text2 }}>Move down</Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          )
-        }}
-        ListEmptyComponent={
+        {(filter === 'all' || filter === 'active') && activeTodos.length > 0 && (
+          <DraggableTodoList
+            items={activeTodos}
+            keyExtractor={(todo) => todo.id}
+            renderItem={(todo) => (
+              <SwipeableTodoItem
+                todo={todo}
+                onToggle={toggleTodo}
+                onPress={handleTodoPress}
+              />
+            )}
+            onReorder={handleReorder}
+            itemHeight={52}
+          />
+        )}
+
+        {filter === 'all' && completedTodos.length > 0 && (
+          <Text
+            style={{
+              ...typography.sectionTitle,
+              color: theme.color.text2,
+              paddingTop: theme.spacing.lg,
+              paddingBottom: theme.spacing.xs,
+            }}
+          >
+            {`COMPLETED (${completedTodos.length})`}
+          </Text>
+        )}
+
+        {(filter === 'all' || filter === 'completed') &&
+          completedTodos.map((todo) => (
+            <SwipeableTodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={toggleTodo}
+              onPress={handleTodoPress}
+            />
+          ))}
+
+        {displayedTodos.length === 0 && (
           <View style={{ alignItems: 'center', paddingTop: theme.spacing['3xl'] }}>
             <Text style={{ ...typography.body, color: theme.color.text2 }}>
               {filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}
             </Text>
           </View>
-        }
-        ListFooterComponent={
-          filter !== 'completed' ? <InlineQuickAdd listId={listId} /> : null
-        }
-      />
+        )}
+
+        {filter !== 'completed' && <InlineQuickAdd listId={listId} />}
+      </ScrollView>
 
       {list && (
         <EditListSheet
