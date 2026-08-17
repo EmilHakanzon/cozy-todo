@@ -101,7 +101,7 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={ICONS.accentColor}
           label="Accent color"
-          disabled
+          onPress={() => router.push('/settings/accent-color')}
         />
         <SettingsRow
           icon={ICONS.firstDay}
