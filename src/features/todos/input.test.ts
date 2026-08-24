@@ -212,3 +212,43 @@ describe('tags', () => {
     expect(one('buy groceries').tagNames).toEqual([])
   })
 })
+
+describe('escalation to the AI', () => {
+  const escalates = (text: string) => parseTaskInput(text, TODAY, 'monday') === null
+
+  it('escalates a question', () => {
+    expect(escalates('what should I do about the party?')).toBe(true)
+  })
+
+  it('escalates a planning verb', () => {
+    expect(escalates('plan a birthday party for next saturday')).toBe(true)
+    expect(escalates('help me get ready for the trip')).toBe(true)
+    expect(escalates('organize my week')).toBe(true)
+    expect(escalates('brainstorm gift ideas')).toBe(true)
+    expect(escalates('suggest some meals')).toBe(true)
+  })
+
+  it('escalates long unstructured prose', () => {
+    expect(
+      escalates('i really need to get my whole life in order before the summer arrives'),
+    ).toBe(true)
+  })
+
+  it('does not escalate a short bare task', () => {
+    expect(escalates('buy milk')).toBe(false)
+  })
+
+  it('does not escalate long text that has structure', () => {
+    expect(
+      escalates('remember to call the dentist about the appointment tomorrow at 09:30'),
+    ).toBe(false)
+  })
+
+  it('escalates empty input', () => {
+    expect(escalates('   ')).toBe(true)
+  })
+
+  it('is not fooled by a planning verb inside the sentence', () => {
+    expect(escalates('buy plan tickets')).toBe(false)
+  })
+})

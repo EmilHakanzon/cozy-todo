@@ -262,6 +262,28 @@ function parseSegment(
   }
 }
 
+const PLANNING_VERBS = [
+  'plan',
+  'help',
+  'organize',
+  'organise',
+  'brainstorm',
+  'suggest',
+  'ideas for',
+  'what should',
+]
+
+const MAX_UNSTRUCTURED_WORDS = 8
+
+function hasStructure(task: ParsedInputTask): boolean {
+  return (
+    task.dueAt !== null ||
+    task.subtasks.length > 0 ||
+    task.tagNames.length > 0 ||
+    task.recurrence !== null
+  )
+}
+
 export function parseTaskInput(
   text: string,
   today: Date,
@@ -269,6 +291,10 @@ export function parseTaskInput(
 ): ParsedInputTask[] | null {
   const trimmed = text.trim()
   if (trimmed === '') return null
+  if (trimmed.endsWith('?')) return null
+
+  const lower = trimmed.toLowerCase()
+  if (PLANNING_VERBS.some((verb) => lower.startsWith(`${verb} `))) return null
 
   const segments = trimmed
     .split(/[\n;]+/)
@@ -279,5 +305,10 @@ export function parseTaskInput(
     .map((segment) => parseSegment(segment, today, firstDay))
     .filter((task) => task.title !== '')
 
-  return tasks.length > 0 ? tasks : null
+  if (tasks.length === 0) return null
+
+  const wordCount = trimmed.split(/\s+/).length
+  if (!tasks.some(hasStructure) && wordCount > MAX_UNSTRUCTURED_WORDS) return null
+
+  return tasks
 }
