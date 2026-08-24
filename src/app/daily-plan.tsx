@@ -14,6 +14,8 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { ChatEmptyState } from '@/components/daily-plan/chat-empty-state'
+import { ChatMessageBubble } from '@/components/daily-plan/chat-message-bubble'
 import { PlanBacklogRow } from '@/components/daily-plan/plan-backlog-row'
 import { PlanHero } from '@/components/daily-plan/plan-hero'
 import { PlanSectionLabel } from '@/components/daily-plan/plan-section-label'
@@ -251,60 +253,12 @@ export default function DailyPlanScreen() {
 
         {/* Chat messages */}
         {chatMessages.length === 0 && !successMsg && (
-          <View
-            style={{
-              paddingHorizontal: theme.spacing.lg,
-              paddingBottom: theme.spacing.md,
+          <ChatEmptyState
+            onPickExample={(text) => {
+              setChatInput(text)
+              inputRef.current?.focus()
             }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.xs,
-                paddingBottom: theme.spacing.sm,
-              }}
-            >
-              <SymbolView name={SPARKLE_ICON} size={16} tintColor={theme.color.accent} />
-              <Text
-                style={{
-                  ...typography.body,
-                  fontFamily: 'Manrope_600SemiBold',
-                  color: theme.color.text,
-                }}
-              >
-                Smart Add
-              </Text>
-            </View>
-            <Text style={{ ...typography.body, color: theme.color.text2, lineHeight: 22 }}>
-              Tell me what you need to do and I'll create tasks for you. You can describe multiple
-              tasks, set dates, add subtasks — just talk naturally.
-            </Text>
-            <View style={{ gap: theme.spacing.xs, paddingTop: theme.spacing.md }}>
-              {[
-                '"Plan a birthday party for next Saturday"',
-                '"Groceries: milk, eggs, bread, and butter"',
-                '"Meeting with "X" tomorrow at 2pm, prepare slides beforehand"',
-              ].map((example) => (
-                <Pressable
-                  key={example}
-                  onPress={() => {
-                    setChatInput(example.slice(1, -1))
-                    inputRef.current?.focus()
-                  }}
-                  style={({ pressed }) => ({
-                    backgroundColor: theme.color.surfaceSoft,
-                    borderRadius: theme.radius.md,
-                    paddingHorizontal: theme.spacing.md,
-                    paddingVertical: theme.spacing.sm,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
-                >
-                  <Text style={{ ...typography.meta, color: theme.color.text2 }}>{example}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+          />
         )}
 
         {successMsg !== '' && (
@@ -330,61 +284,7 @@ export default function DailyPlanScreen() {
             key={i}
             style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}
           >
-            {msg.role === 'user' ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-                <View
-                  style={{
-                    backgroundColor: theme.color.accent,
-                    borderRadius: theme.radius.lg,
-                    borderBottomRightRadius: theme.radius.sm,
-                    paddingHorizontal: theme.spacing.md,
-                    paddingVertical: theme.spacing.sm,
-                    maxWidth: '80%',
-                  }}
-                >
-                  <Text style={{ ...typography.body, color: '#ffffff' }}>{msg.text}</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={{ maxWidth: '90%' }}>
-                {msg.text !== '' && (
-                  <View
-                    style={{
-                      backgroundColor: theme.color.surfaceSoft,
-                      borderRadius: theme.radius.lg,
-                      borderBottomLeftRadius: theme.radius.sm,
-                      paddingHorizontal: theme.spacing.md,
-                      paddingVertical: theme.spacing.sm,
-                    }}
-                  >
-                    <Text style={{ ...typography.body, color: theme.color.text, lineHeight: 22 }}>
-                      {msg.text}
-                    </Text>
-                  </View>
-                )}
-                {msg.todos && msg.todos.length > 0 && (
-                  <View
-                    style={{
-                      marginTop: theme.spacing.xs,
-                      backgroundColor: theme.color.surface,
-                      borderRadius: theme.radius.lg,
-                      borderWidth: 1,
-                      borderColor: theme.color.accent + '30',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {msg.todos.map((task, j) => (
-                      <TaskPreviewRow
-                        key={j}
-                        task={task}
-                        showBorder={j < (msg.todos?.length ?? 0) - 1}
-                        timeFormat={timeFormat}
-                      />
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
+            <ChatMessageBubble message={msg} timeFormat={timeFormat} />
           </View>
         ))}
 
@@ -624,96 +524,3 @@ export default function DailyPlanScreen() {
     </KeyboardAvoidingView>
   )
 }
-
-function TaskPreviewRow({
-  task,
-  showBorder,
-  timeFormat,
-}: {
-  task: ParsedTodo
-  showBorder: boolean
-  timeFormat: string
-}) {
-  const { theme } = useAppTheme()
-
-  return (
-    <View
-      style={{
-        padding: theme.spacing.md,
-        borderBottomWidth: showBorder ? 1 : 0,
-        borderBottomColor: theme.color.border,
-      }}
-    >
-      <Text
-        style={{
-          ...typography.body,
-          fontFamily: 'Manrope_600SemiBold',
-          color: theme.color.text,
-        }}
-      >
-        {task.title}
-      </Text>
-      {task.dueAt && (
-        <Text
-          style={{
-            ...typography.meta,
-            color: theme.color.accent,
-            paddingTop: 2,
-          }}
-        >
-          {new Date(task.dueAt).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            ...(task.dueAt.includes('T')
-              ? {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: timeFormat === '12h',
-                }
-              : {}),
-          })}
-        </Text>
-      )}
-      {task.notes !== '' && (
-        <Text
-          style={{
-            ...typography.meta,
-            color: theme.color.text2,
-            paddingTop: 2,
-          }}
-          numberOfLines={2}
-        >
-          {task.notes}
-        </Text>
-      )}
-      {task.subtasks.length > 0 && (
-        <View style={{ paddingTop: theme.spacing.xs }}>
-          {task.subtasks.map((sub, j) => (
-            <View
-              key={j}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.xs,
-                paddingVertical: 2,
-              }}
-            >
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  borderWidth: 1,
-                  borderColor: theme.color.text2,
-                }}
-              />
-              <Text style={{ ...typography.meta, color: theme.color.text2 }}>{sub}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  )
-}
-
