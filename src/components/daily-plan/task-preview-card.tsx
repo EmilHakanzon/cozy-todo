@@ -1,17 +1,49 @@
+import { useState } from 'react'
 import { Text, View } from 'react-native'
 
+import { PendingTagEditor } from '@/components/daily-plan/pending-tag-editor'
+import { PendingTagPill } from '@/components/daily-plan/pending-tag-pill'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { typography } from '@/themes/typography'
 
-import type { PlanTask } from '@/features/daily-plan/types'
+import type { PendingTag, PlanTask } from '@/features/daily-plan/types'
+import type { TagColor } from '@/features/tags/types'
 
 type TaskPreviewCardProps = {
   tasks: PlanTask[]
   timeFormat: string
+  onChangeTags: (taskIndex: number, tags: PendingTag[]) => void
 }
 
-export function TaskPreviewCard({ tasks, timeFormat }: TaskPreviewCardProps) {
+export function TaskPreviewCard({ tasks, timeFormat, onChangeTags }: TaskPreviewCardProps) {
   const { theme } = useAppTheme()
+  const [editingTagIndex, setEditingTagIndex] = useState<{
+    taskIndex: number
+    tagIndex: number
+  } | null>(null)
+
+  const editingTag =
+    editingTagIndex !== null
+      ? (tasks[editingTagIndex.taskIndex]?.tags[editingTagIndex.tagIndex] ?? null)
+      : null
+
+  const closeEditor = () => setEditingTagIndex(null)
+
+  const handleChangeColor = (color: TagColor) => {
+    if (editingTagIndex === null) return
+    const { taskIndex, tagIndex } = editingTagIndex
+    const nextTags = tasks[taskIndex].tags.map((t, i) =>
+      i === tagIndex ? { ...t, color } : t,
+    )
+    onChangeTags(taskIndex, nextTags)
+  }
+
+  const handleRemoveTag = () => {
+    if (editingTagIndex === null) return
+    const { taskIndex, tagIndex } = editingTagIndex
+    const nextTags = tasks[taskIndex].tags.filter((_, i) => i !== tagIndex)
+    onChangeTags(taskIndex, nextTags)
+  }
 
   return (
     <View
@@ -30,8 +62,17 @@ export function TaskPreviewCard({ tasks, timeFormat }: TaskPreviewCardProps) {
           task={task}
           showBorder={j < tasks.length - 1}
           timeFormat={timeFormat}
+          onTagPress={(tagIndex) => setEditingTagIndex({ taskIndex: j, tagIndex })}
         />
       ))}
+
+      <PendingTagEditor
+        visible={editingTagIndex !== null}
+        tag={editingTag}
+        onChangeColor={handleChangeColor}
+        onRemove={handleRemoveTag}
+        onClose={closeEditor}
+      />
     </View>
   )
 }
@@ -40,10 +81,12 @@ function TaskPreviewRow({
   task,
   showBorder,
   timeFormat,
+  onTagPress,
 }: {
   task: PlanTask
   showBorder: boolean
   timeFormat: string
+  onTagPress: (tagIndex: number) => void
 }) {
   const { theme } = useAppTheme()
 
@@ -64,6 +107,20 @@ function TaskPreviewRow({
       >
         {task.title}
       </Text>
+      {task.tags.length > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: theme.spacing.micro,
+            paddingTop: 4,
+          }}
+        >
+          {task.tags.map((tag, tagIndex) => (
+            <PendingTagPill key={tagIndex} tag={tag} onPress={() => onTagPress(tagIndex)} />
+          ))}
+        </View>
+      )}
       {task.dueAt && (
         <Text
           style={{

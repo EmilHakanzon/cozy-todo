@@ -4,14 +4,21 @@ import { TaskPreviewCard } from '@/components/daily-plan/task-preview-card'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { typography } from '@/themes/typography'
 
-import type { PlanChatMessage } from '@/features/daily-plan/types'
+import type { PendingTag, PlanChatMessage } from '@/features/daily-plan/types'
 
 type ChatMessageBubbleProps = {
   message: PlanChatMessage
   timeFormat: string
+  messageIndex: number
+  onChangeTags: (messageIndex: number, taskIndex: number, tags: PendingTag[]) => void
 }
 
-export function ChatMessageBubble({ message, timeFormat }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({
+  message,
+  timeFormat,
+  messageIndex,
+  onChangeTags,
+}: ChatMessageBubbleProps) {
   const { theme } = useAppTheme()
 
   if (message.role === 'user') {
@@ -54,7 +61,11 @@ export function ChatMessageBubble({ message, timeFormat }: ChatMessageBubbleProp
           </View>
         )}
         {message.tasks && message.tasks.length > 0 && (
-          <TaskPreviewCard tasks={message.tasks} timeFormat={timeFormat} />
+          <TaskPreviewCard
+            tasks={message.tasks}
+            timeFormat={timeFormat}
+            onChangeTags={(taskIndex, tags) => onChangeTags(messageIndex, taskIndex, tags)}
+          />
         )}
       </View>
     </View>

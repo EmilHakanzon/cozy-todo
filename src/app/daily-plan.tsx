@@ -67,6 +67,7 @@ export default function DailyPlanScreen() {
   const updateTodo = useTodoStore((s) => s.updateTodo)
   const timeFormat = useSettingsStore((s) => s.timeFormat)
   const hasHydrated = useDailyPlanStore((s) => s.hasHydrated)
+  const setTaskTags = useDailyPlanStore((s) => s.setTaskTags)
 
   const {
     messages,
@@ -225,7 +226,13 @@ export default function DailyPlanScreen() {
             )}
 
             {messages.map((msg, i) => (
-              <ChatMessageBubble key={i} message={msg} timeFormat={timeFormat} />
+              <ChatMessageBubble
+                key={i}
+                message={msg}
+                timeFormat={timeFormat}
+                messageIndex={i}
+                onChangeTags={setTaskTags}
+              />
             ))}
 
             {isSending && (
