@@ -163,3 +163,21 @@ describe('toggleTodo', () => {
     expect(todo(a).completedAt).toBeNull()
   })
 })
+
+describe('createTodo tagIds', () => {
+  it('stores the given tag ids', () => {
+    const id = store().createTodo({
+      listId: HOME,
+      title: 'Handla',
+      tagIds: ['tag-a', 'tag-b'],
+    })
+
+    expect(todo(id).tagIds).toEqual(['tag-a', 'tag-b'])
+  })
+
+  it('defaults to an empty array when omitted', () => {
+    const id = store().createTodo({ listId: HOME, title: 'Utan taggar' })
+
+    expect(todo(id).tagIds).toEqual([])
+  })
+})

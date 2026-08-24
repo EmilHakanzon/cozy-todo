@@ -19,6 +19,7 @@ type CreateTodoInput = {
   title: string
   notes?: string
   dueAt?: string | null
+  tagIds?: string[]
 }
 type UpdateTodoInput = Partial<Pick<Todo, 'title' | 'notes' | 'dueAt' | 'recurrence' | 'tagIds'>>
 
@@ -100,7 +101,7 @@ export const useTodoStore = create<TodoState>()(
       dueAt: input.dueAt ?? null,
       completedAt: null,
       recurrence: null,
-      tagIds: [],
+      tagIds: input.tagIds ?? [],
 
       position,
 
