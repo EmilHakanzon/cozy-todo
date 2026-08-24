@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { PlanBacklogRow } from '@/components/daily-plan/plan-backlog-row'
+import { PlanHero } from '@/components/daily-plan/plan-hero'
 import { PlanSectionLabel } from '@/components/daily-plan/plan-section-label'
 import { PlanTodoRow } from '@/components/daily-plan/plan-todo-row'
 import {
@@ -25,7 +26,6 @@ import {
   getTodayTodos,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
-import { useWeather } from '@/hooks/use-weather'
 import { smartAddChat, type ChatMessage, type ParsedTodo } from '@/lib/smart-add'
 import { useListStore } from '@/stores/list-store'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -60,13 +60,6 @@ const CLEAR_ICON: SymbolViewProps['name'] = {
   web: 'refresh',
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
-}
-
 export default function DailyPlanScreen() {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -76,7 +69,6 @@ export default function DailyPlanScreen() {
   const updateTodo = useTodoStore((s) => s.updateTodo)
   const listsById = useListStore((s) => s.listsById)
   const timeFormat = useSettingsStore((s) => s.timeFormat)
-  const weather = useWeather()
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -111,22 +103,6 @@ export default function DailyPlanScreen() {
     }
     return [] as ParsedTodo[]
   }, [chatMessages])
-
-  const formatClock = useCallback(
-    () =>
-      new Date().toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: timeFormat === '12h',
-      }),
-    [timeFormat]
-  )
-  const [clockTime, setClockTime] = useState(formatClock)
-  useEffect(() => {
-    setClockTime(formatClock())
-    const id = setInterval(() => setClockTime(formatClock()), 30_000)
-    return () => clearInterval(id)
-  }, [formatClock])
 
   const defaultListId = useMemo(() => {
     const lists = Object.values(listsById)
@@ -214,17 +190,6 @@ export default function DailyPlanScreen() {
     setSuccessMsg('')
   }, [])
 
-  const dateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
-
-  const weatherStr =
-    weather.status === 'success'
-      ? `${weather.data.icon} ${weather.data.temperature}°  ·  ${weather.data.description}`
-      : ''
-
   const hasChatContent = chatMessages.length > 0
 
   return (
@@ -282,78 +247,7 @@ export default function DailyPlanScreen() {
         }}
       >
         {/* Hero greeting card */}
-        <View
-          style={{
-            marginHorizontal: theme.spacing.lg,
-            backgroundColor: theme.color.accentSoft,
-            borderRadius: theme.radius.xl,
-            padding: theme.spacing.lg,
-            marginBottom: theme.spacing.lg,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: 'Manrope_600SemiBold',
-              fontSize: 28,
-              lineHeight: 34,
-              color: theme.color.text,
-            }}
-          >
-            {getGreeting()}
-          </Text>
-          <Text
-            style={{
-              ...typography.body,
-              color: theme.color.text2,
-              paddingTop: theme.spacing.micro,
-            }}
-          >
-            {dateStr} · {clockTime}
-          </Text>
-          {weatherStr !== '' && (
-            <Text
-              style={{
-                ...typography.meta,
-                color: theme.color.text2,
-                paddingTop: theme.spacing.micro,
-              }}
-            >
-              {weatherStr}
-            </Text>
-          )}
-          {totalPlanned > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.spacing.xs,
-                paddingTop: theme.spacing.md,
-              }}
-            >
-              <View
-                style={{
-                  backgroundColor: theme.color.accent,
-                  borderRadius: theme.radius.full,
-                  paddingHorizontal: theme.spacing.sm,
-                  paddingVertical: 2,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: 'Manrope_600SemiBold',
-                    fontSize: 13,
-                    color: '#ffffff',
-                  }}
-                >
-                  {totalPlanned}
-                </Text>
-              </View>
-              <Text style={{ ...typography.meta, color: theme.color.text2 }}>
-                {totalPlanned === 1 ? 'task' : 'tasks'} on your plate
-              </Text>
-            </View>
-          )}
-        </View>
+        <PlanHero totalPlanned={totalPlanned} />
 
         {/* Chat messages */}
         {chatMessages.length === 0 && !successMsg && (
