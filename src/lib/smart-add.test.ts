@@ -137,6 +137,17 @@ describe('normalizeParsedTodos', () => {
     expect(normalizeParsedTodos([{ notes: 'orphan' }, { title: 'ok' }])).toHaveLength(1)
   })
 
+  it('discards entries whose title is only whitespace', () => {
+    expect(normalizeParsedTodos([{ title: '   ' }, { title: 'ok' }])).toHaveLength(1)
+  })
+
+  it('survives null and undefined entries in the array', () => {
+    const todos = normalizeParsedTodos([null, undefined, { title: 'ok' }])
+
+    expect(todos).toHaveLength(1)
+    expect(todos[0].title).toBe('ok')
+  })
+
   it('returns an empty array for a non-array input', () => {
     expect(normalizeParsedTodos(undefined)).toEqual([])
   })
