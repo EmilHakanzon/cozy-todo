@@ -1,12 +1,24 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { toAiHistory } from '@/features/daily-plan/ai-history'
+import { resolveTags } from '@/features/daily-plan/resolve-tags'
+import { parseTaskInput } from '@/features/todos/input'
 import { smartAddChat } from '@/lib/smart-add'
 import { useDailyPlanStore } from '@/stores/daily-plan-store'
 import { useListStore } from '@/stores/list-store'
+import { useSettingsStore } from '@/stores/settings-store'
+import { useTagStore } from '@/stores/tag-store'
 import { useTodoStore } from '@/stores/todo-store'
 
-import type { PlanTask } from '@/features/daily-plan/types'
+import type { PendingTag, PlanTask } from '@/features/daily-plan/types'
+
+/** A short canned line. Anything conversational is the AI's job. */
+function localReply(tasks: PlanTask[]): string {
+  if (tasks.length === 1) {
+    return tasks[0].dueAt ? 'Got it — 1 task with a due date.' : 'Got it — 1 task.'
+  }
+  return `Found ${tasks.length} tasks.`
+}
 
 export function useDailyPlanChat() {
   const chatsById = useDailyPlanStore((s) => s.chatsById)
@@ -20,7 +32,11 @@ export function useDailyPlanChat() {
   const startNewChat = useDailyPlanStore((s) => s.startNewChat)
 
   const createTodo = useTodoStore((s) => s.createTodo)
+  const updateTodo = useTodoStore((s) => s.updateTodo)
   const listsById = useListStore((s) => s.listsById)
+  const tagsById = useTagStore((s) => s.tagsById)
+  const createTag = useTagStore((s) => s.createTag)
+  const firstDayOfWeek = useSettingsStore((s) => s.firstDayOfWeek)
 
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
@@ -43,6 +59,11 @@ export function useDailyPlanChat() {
     const lists = Object.values(listsById)
     return lists.length > 0 ? lists[0].id : ''
   }, [listsById])
+
+  const existingTagNames = useMemo(
+    () => Object.values(tagsById).map((t) => t.name),
+    [tagsById],
+  )
 
   const handleSetDraft = useCallback(
     (text: string) => {
@@ -68,21 +89,57 @@ export function useDailyPlanChat() {
     setSuccessMsg('')
 
     try {
-      const result = await smartAddChat(toAiHistory(messages), trimmed)
-      appendMessageTo(chatId, {
-        role: 'ai',
-        text: result.message,
-        tasks: result.todos.map((todo) => ({
-          title: todo.title,
-          notes: todo.notes,
-          dueAt: todo.dueAt,
-          subtasks: todo.subtasks,
-          tags: [],
-          recurrence: null,
-        })),
-      })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      // Follow-ups always go to the AI: refining a plan needs conversational
+      // state the local parser does not have.
+      const isFirstMessage = messages.length === 0
+      const local = isFirstMessage
+        ? parseTaskInput(trimmed, new Date(), firstDayOfWeek)
+        : null
+
+      if (local !== null) {
+        const tasks: PlanTask[] = local.map((task) => ({
+          title: task.title,
+          notes: task.notes,
+          dueAt: task.dueAt,
+          subtasks: task.subtasks,
+          tags: resolveTags(task.tagNames, tagsById),
+          recurrence: task.recurrence,
+        }))
+
+        // A tiny delay so the instant local answer does not feel jarring
+        // next to the AI path, which shows the same typing indicator.
+        await new Promise((resolve) => setTimeout(resolve, 250))
+
+        appendMessageTo(chatId, { role: 'ai', text: localReply(tasks), tasks })
+        return
+      }
+
+      try {
+        const result = await smartAddChat(
+          toAiHistory(messages),
+          trimmed,
+          existingTagNames,
+        )
+        appendMessageTo(chatId, {
+          role: 'ai',
+          text: result.message,
+          tasks: result.todos.map((todo) => ({
+            title: todo.title,
+            notes: todo.notes,
+            dueAt: todo.dueAt,
+            subtasks: todo.subtasks,
+            tags: resolveTags(todo.tags, tagsById),
+            recurrence: null,
+          })),
+        })
+      } catch {
+        // Quota, offline, unparseable JSON -- degrade to a plain hint rather
+        // than a red error. Smart Add is a bonus on top of the local parser.
+        appendMessageTo(chatId, {
+          role: 'ai',
+          text: 'I could not work that one out — try something like "call mom tomorrow at 5".',
+        })
+      }
     } finally {
       setIsSending(false)
     }
@@ -90,6 +147,9 @@ export function useDailyPlanChat() {
     draft,
     isSending,
     messages,
+    firstDayOfWeek,
+    tagsById,
+    existingTagNames,
     ensureActiveChat,
     appendMessage,
     appendMessageTo,
@@ -104,13 +164,36 @@ export function useDailyPlanChat() {
       return
     }
 
+    // Per-invocation cache keyed by lowercased name, so one new tag name used
+    // by several tasks in the same batch is created exactly once.
+    const idByName = new Map<string, string>()
+
+    function tagIdFor(tag: PendingTag): string {
+      const key = tag.name.toLowerCase()
+      const cached = idByName.get(key)
+      if (cached) return cached
+
+      // A tag deleted in Settings while this chat sat in history leaves a
+      // stale id behind -- treat it as new rather than writing a dead id.
+      const stillExists = tag.tagId !== null && tagsById[tag.tagId] !== undefined
+      const id = stillExists ? (tag.tagId as string) : createTag(tag.name, tag.color)
+
+      idByName.set(key, id)
+      return id
+    }
+
     for (const task of latestTasks) {
       const parentId = createTodo({
         listId: defaultListId,
         title: task.title,
         notes: task.notes,
         dueAt: task.dueAt,
+        tagIds: task.tags.map(tagIdFor),
       })
+
+      if (task.recurrence !== null) {
+        updateTodo(parentId, { recurrence: task.recurrence })
+      }
 
       for (const subtaskTitle of task.subtasks) {
         createTodo({
@@ -125,7 +208,15 @@ export function useDailyPlanChat() {
     finishActiveChat(count)
     setSuccessMsg(`Created ${count} ${count === 1 ? 'task' : 'tasks'}`)
     setTimeout(() => setSuccessMsg(''), 3000)
-  }, [latestTasks, defaultListId, createTodo, finishActiveChat])
+  }, [
+    latestTasks,
+    defaultListId,
+    tagsById,
+    createTag,
+    createTodo,
+    updateTodo,
+    finishActiveChat,
+  ])
 
   const handleStartNewChat = useCallback(() => {
     startNewChat()
