@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ChatEmptyState } from '@/components/daily-plan/chat-empty-state'
+import { ChatInputBar } from '@/components/daily-plan/chat-input-bar'
 import { ChatMessageBubble } from '@/components/daily-plan/chat-message-bubble'
 import { PlanBacklogRow } from '@/components/daily-plan/plan-backlog-row'
 import { PlanHero } from '@/components/daily-plan/plan-hero'
@@ -40,16 +41,6 @@ const CLOSE_ICON: SymbolViewProps['name'] = {
   ios: 'xmark',
   android: 'close',
   web: 'close',
-}
-const SEND_ICON: SymbolViewProps['name'] = {
-  ios: 'arrow.up.circle.fill',
-  android: 'send',
-  web: 'send',
-}
-const SPARKLE_ICON: SymbolViewProps['name'] = {
-  ios: 'sparkles',
-  android: 'auto_awesome',
-  web: 'auto_awesome',
 }
 const CHECK_ICON: SymbolViewProps['name'] = {
   ios: 'checkmark.circle.fill',
@@ -444,78 +435,18 @@ export default function DailyPlanScreen() {
         )}
       </ScrollView>
 
-      {/* Chat input bar — pinned to bottom */}
-      <View
-        style={{
-          paddingHorizontal: theme.spacing.lg,
-          paddingTop: theme.spacing.xs,
-          paddingBottom: isKeyboardVisible ? theme.spacing.xs : insets.bottom + theme.spacing.xs,
-          backgroundColor: theme.color.background,
-          borderTopWidth: 1,
-          borderTopColor: theme.color.border,
+      <ChatInputBar
+        value={chatInput}
+        onChangeText={(text) => {
+          setChatInput(text)
+          setChatError('')
         }}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            backgroundColor: theme.color.surface,
-            borderRadius: theme.radius.lg,
-            borderWidth: 1,
-            borderColor: theme.color.border,
-            paddingLeft: theme.spacing.md,
-            paddingRight: theme.spacing.xs,
-            paddingVertical: theme.spacing.xs,
-          }}
-        >
-          <SymbolView
-            name={SPARKLE_ICON}
-            size={18}
-            tintColor={theme.color.accent}
-            style={{ marginBottom: 8 }}
-          />
-          <TextInput
-            ref={inputRef}
-            value={chatInput}
-            onChangeText={(text) => {
-              setChatInput(text)
-              setChatError('')
-            }}
-            placeholder={hasChatContent ? 'Refine or add more...' : 'Describe your tasks...'}
-            placeholderTextColor={theme.color.text2}
-            multiline
-            returnKeyType="default"
-            editable={!isSending}
-            style={{
-              ...typography.body,
-              flex: 1,
-              color: theme.color.text,
-              paddingHorizontal: theme.spacing.xs,
-              paddingVertical: theme.spacing.micro,
-              maxHeight: 100,
-            }}
-          />
-          {isSending ? (
-            <ActivityIndicator
-              color={theme.color.accent}
-              style={{ marginBottom: 6, marginRight: 4 }}
-            />
-          ) : (
-            chatInput.trim().length > 0 && (
-              <Pressable
-                onPress={handleSend}
-                hitSlop={8}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.6 : 1,
-                  marginBottom: 4,
-                })}
-              >
-                <SymbolView name={SEND_ICON} size={28} tintColor={theme.color.accent} />
-              </Pressable>
-            )
-          )}
-        </View>
-      </View>
+        onSend={handleSend}
+        isSending={isSending}
+        isKeyboardVisible={isKeyboardVisible}
+        placeholder={hasChatContent ? 'Refine or add more...' : 'Describe your tasks...'}
+        inputRef={inputRef}
+      />
     </KeyboardAvoidingView>
   )
 }
