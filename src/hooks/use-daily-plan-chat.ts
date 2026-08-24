@@ -15,6 +15,7 @@ export function useDailyPlanChat() {
   const setDraft = useDailyPlanStore((s) => s.setDraft)
   const ensureActiveChat = useDailyPlanStore((s) => s.ensureActiveChat)
   const appendMessage = useDailyPlanStore((s) => s.appendMessage)
+  const appendMessageTo = useDailyPlanStore((s) => s.appendMessageTo)
   const finishActiveChat = useDailyPlanStore((s) => s.finishActiveChat)
   const startNewChat = useDailyPlanStore((s) => s.startNewChat)
 
@@ -55,7 +56,11 @@ export function useDailyPlanChat() {
     const trimmed = draft.trim()
     if (!trimmed || isSending) return
 
-    ensureActiveChat()
+    // Pin the chat the reply belongs to. "New chat" and the history sheet stay
+    // tappable while the request is in flight, so activeChatId can move on --
+    // re-reading it after the await would file the reply under the wrong chat,
+    // or drop it entirely once it is null.
+    const chatId = ensureActiveChat()
     appendMessage({ role: 'user', text: trimmed })
     setDraft('')
     setIsSending(true)
@@ -64,7 +69,7 @@ export function useDailyPlanChat() {
 
     try {
       const result = await smartAddChat(toAiHistory(messages), trimmed)
-      appendMessage({
+      appendMessageTo(chatId, {
         role: 'ai',
         text: result.message,
         tasks: result.todos.map((todo) => ({
@@ -81,7 +86,15 @@ export function useDailyPlanChat() {
     } finally {
       setIsSending(false)
     }
-  }, [draft, isSending, messages, ensureActiveChat, appendMessage, setDraft])
+  }, [
+    draft,
+    isSending,
+    messages,
+    ensureActiveChat,
+    appendMessage,
+    appendMessageTo,
+    setDraft,
+  ])
 
   const createTasks = useCallback(() => {
     if (latestTasks.length === 0) return

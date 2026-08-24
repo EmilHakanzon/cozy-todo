@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useDailyPlanStore } from './daily-plan-store'
 
@@ -13,6 +13,10 @@ function userMsg(text: string): PlanChatMessage {
 
 beforeEach(() => {
   useDailyPlanStore.setState({ chatsById: {}, activeChatId: null, draft: '' })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('ensureActiveChat', () => {
@@ -52,6 +56,48 @@ describe('appendMessage', () => {
 
     expect(chats()[id].title).toBe('first')
     expect(chats()[id].messages).toHaveLength(3)
+  })
+})
+
+describe('appendMessageTo', () => {
+  it('lands in the chat it was given even after activeChatId moved on', () => {
+    // The shape of an in-flight AI request: the user resumes another chat
+    // while chat A is still waiting for its reply.
+    const chatA = store().ensureActiveChat()
+    store().appendMessage(userMsg('plan chat A'))
+    store().startNewChat()
+    const chatB = store().ensureActiveChat()
+    store().appendMessage(userMsg('plan chat B'))
+
+    store().appendMessageTo(chatA, { role: 'ai', text: 'reply for A' })
+
+    expect(chats()[chatA].messages.map((m) => m.text)).toEqual([
+      'plan chat A',
+      'reply for A',
+    ])
+    expect(chats()[chatB].messages.map((m) => m.text)).toEqual(['plan chat B'])
+    expect(store().activeChatId).toBe(chatB)
+  })
+
+  it('still delivers after "New chat" left no chat active', () => {
+    const chatA = store().ensureActiveChat()
+    store().appendMessage(userMsg('question'))
+    store().startNewChat()
+
+    store().appendMessageTo(chatA, { role: 'ai', text: 'answer' })
+
+    expect(store().activeChatId).toBeNull()
+    expect(chats()[chatA].messages).toHaveLength(2)
+  })
+
+  it('is a no-op when the target chat was deleted mid-flight', () => {
+    const gone = store().ensureActiveChat()
+    store().appendMessage(userMsg('doomed'))
+    store().deleteChat(gone)
+
+    store().appendMessageTo(gone, { role: 'ai', text: 'too late' })
+
+    expect(chats()[gone]).toBeUndefined()
   })
 })
 
@@ -191,5 +237,26 @@ describe('retention', () => {
     expect(chats()['seed-30']).toBeDefined()
     expect(chats()['seed-00']).toBeUndefined()
     expect(chats()['seed-01']).toBeUndefined()
+  })
+
+  it('holds the cap for chats that are abandoned instead of finished', () => {
+    // Nobody taps "Create N tasks" here, so finishActiveChat never runs and
+    // ensureActiveChat is the only place the cap can be enforced.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-01T00:00:00.000Z'))
+
+    const ids: string[] = []
+    for (let i = 0; i < 32; i++) {
+      vi.advanceTimersByTime(1000)
+      store().startNewChat()
+      ids.push(store().ensureActiveChat())
+      store().appendMessage(userMsg(`abandoned ${i}`))
+    }
+
+    expect(Object.keys(chats())).toHaveLength(30)
+    expect(chats()[ids[31]]).toBeDefined()
+    expect(store().activeChatId).toBe(ids[31])
+    expect(chats()[ids[0]]).toBeUndefined()
+    expect(chats()[ids[1]]).toBeUndefined()
   })
 })

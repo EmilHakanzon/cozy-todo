@@ -23,6 +23,7 @@ type DailyPlanState = {
   ensureActiveChat: () => PlanChatId
   setDraft: (text: string) => void
   appendMessage: (msg: PlanChatMessage) => void
+  appendMessageTo: (chatId: PlanChatId, msg: PlanChatMessage) => void
   setTaskTags: (messageIndex: number, taskIndex: number, tags: PendingTag[]) => void
   finishActiveChat: (createdTodoCount: number) => void
   startNewChat: () => void
@@ -39,6 +40,25 @@ function withoutEmptyChat(
   if (!chat || chat.messages.length > 0) return chatsById
   const { [id]: _removed, ...rest } = chatsById
   return rest
+}
+
+// A persisted chat is only usable if the fields every reader touches survived:
+// sortChatsByRecency calls updatedAt.localeCompare and withoutEmptyChat reads
+// messages.length. A missing title or count only degrades cosmetically.
+function isUsableChat(value: unknown): value is PlanChat {
+  if (typeof value !== 'object' || value === null) return false
+  const chat = value as Partial<PlanChat>
+  return Array.isArray(chat.messages) && typeof chat.updatedAt === 'string'
+}
+
+function sanitizeChats(value: unknown): Record<PlanChatId, PlanChat> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+
+  const next: Record<PlanChatId, PlanChat> = {}
+  for (const [id, chat] of Object.entries(value)) {
+    if (isUsableChat(chat)) next[id] = { ...chat, id }
+  }
+  return next
 }
 
 export const useDailyPlanStore = create<DailyPlanState>()(
@@ -64,8 +84,12 @@ export const useDailyPlanStore = create<DailyPlanState>()(
           updatedAt: now,
         }
 
+        // Prune here as well as in finishActiveChat: a user who chats, dislikes
+        // the answer and taps "New chat" never finishes a chat, so this is the
+        // only path that enforces the cap for them. The new id is passed as the
+        // protected chat so the one being created can never be pruned.
         set((state) => ({
-          chatsById: { ...state.chatsById, [id]: chat },
+          chatsById: pruneChats({ ...state.chatsById, [id]: chat }, id, MAX_CHATS),
           activeChatId: id,
         }))
         return id
@@ -76,7 +100,14 @@ export const useDailyPlanStore = create<DailyPlanState>()(
       appendMessage: (msg) => {
         const id = get().activeChatId
         if (id === null) return
-        const chat = get().chatsById[id]
+        get().appendMessageTo(id, msg)
+      },
+
+      // Targets a chat by id instead of re-reading activeChatId. Anything that
+      // appends after an await must use this: the user can resume another chat
+      // or start a new one while the request is still in flight.
+      appendMessageTo: (chatId, msg) => {
+        const chat = get().chatsById[chatId]
         if (!chat) return
 
         const isFirstUserMessage =
@@ -85,7 +116,7 @@ export const useDailyPlanStore = create<DailyPlanState>()(
         set((state) => ({
           chatsById: {
             ...state.chatsById,
-            [id]: {
+            [chatId]: {
               ...chat,
               title: isFirstUserMessage ? deriveChatTitle(msg.text) : chat.title,
               messages: [...chat.messages, msg],
@@ -170,13 +201,44 @@ export const useDailyPlanStore = create<DailyPlanState>()(
     }),
     {
       name: 'daily-plan',
+
       storage: createJSONStorage(() => AsyncStorage),
+
+      // draft is deliberately NOT persisted: setDraft fires on every keystroke
+      // and zustand/persist has no debounce, so persisting it would
+      // JSON.stringify the whole chat archive once per character. The draft
+      // still survives navigating away and back, since the store is
+      // module-level -- and that navigation loss is the reported bug.
       partialize: (state) => ({
         chatsById: state.chatsById,
         activeChatId: state.activeChatId,
-        draft: state.draft,
       }),
-      onRehydrateStorage: () => () => {
+
+      version: 1,
+
+      // A corrupt record must degrade to "that chat is gone", never to a crash
+      // on open: sortChatsByRecency would throw on a non-object chatsById.
+      // persisted is undefined when a version mismatch has no migration to run.
+      merge: (persisted, current) => {
+        const incoming = (persisted ?? {}) as Partial<DailyPlanState>
+        const chatsById = sanitizeChats(incoming.chatsById)
+        const activeChatId =
+          typeof incoming.activeChatId === 'string' && chatsById[incoming.activeChatId]
+            ? incoming.activeChatId
+            : null
+
+        // Only the two partialized fields come back from storage; draft and
+        // hasHydrated keep their in-memory defaults.
+        return { ...current, chatsById, activeChatId }
+      },
+
+      // The flag must be set on BOTH paths. On failure state is undefined, so
+      // state?.… would silently skip and leave the screen blocked forever.
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          console.error('Failed to rehydrate daily plan', error)
+        }
+
         useDailyPlanStore.setState({ hasHydrated: true })
       },
     },
