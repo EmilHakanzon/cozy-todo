@@ -12,6 +12,10 @@ import { useTodoStore } from '@/stores/todo-store'
 
 import type { PendingTag, PlanTask } from '@/features/daily-plan/types'
 
+/** Shown whenever Smart Add cannot produce a plan, whatever the cause. */
+const FALLBACK_REPLY =
+  'I could not work that one out — try something like "call mom tomorrow at 5".'
+
 /** A short canned line. Anything conversational is the AI's job. */
 function localReply(tasks: PlanTask[]): string {
   if (tasks.length === 1) {
@@ -135,11 +139,13 @@ export function useDailyPlanChat() {
       } catch {
         // Quota, offline, unparseable JSON -- degrade to a plain hint rather
         // than a red error. Smart Add is a bonus on top of the local parser.
-        appendMessageTo(chatId, {
-          role: 'ai',
-          text: 'I could not work that one out — try something like "call mom tomorrow at 5".',
-        })
+        appendMessageTo(chatId, { role: 'ai', text: FALLBACK_REPLY })
       }
+    } catch (e) {
+      // A throw here means a bug in the local parser or tag resolution, not a
+      // network problem. Degrade for the user, but keep the real error visible.
+      console.error('Smart Add local path failed', e)
+      appendMessageTo(chatId, { role: 'ai', text: FALLBACK_REPLY })
     } finally {
       setIsSending(false)
     }
