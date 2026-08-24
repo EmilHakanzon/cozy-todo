@@ -112,7 +112,15 @@ export async function smartAddChat(
   const content: string =
     data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
-  const parsed: SmartAddResult = JSON.parse(content)
+  // A 200 can still carry no usable text -- a safety block, a recitation stop,
+  // or a MAX_TOKENS cut mid-object. Without this the raw SyntaxError from
+  // JSON.parse('') would be shown to the user as the chat reply.
+  let parsed: SmartAddResult
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    throw new Error('Smart Add returned an unreadable response. Try again.')
+  }
 
   if (!parsed.message) {
     parsed.message = ''

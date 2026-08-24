@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { formatGeminiError } from './smart-add'
+// Hoisted above the import: the module reads the key once at load time.
+vi.hoisted(() => {
+  process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key'
+})
+
+import { formatGeminiError, smartAddChat } from './smart-add'
 
 const quotaBody = JSON.stringify({
   error: {
@@ -45,5 +50,59 @@ describe('formatGeminiError', () => {
     expect(formatGeminiError(500, '{"ok":false}')).toBe(
       'Smart Add is unavailable right now.',
     )
+  })
+})
+
+const UNREADABLE = 'Smart Add returned an unreadable response. Try again.'
+
+function mockOkResponse(body: unknown) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => body }),
+  )
+}
+
+function candidateText(text: string) {
+  return { candidates: [{ content: { parts: [{ text }] } }] }
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('smartAddChat', () => {
+  it('reports a friendly error when a 200 carries no candidates', async () => {
+    // A safety block or recitation stop: status 200, empty candidates. The
+    // `?? ''` fallback used to send an empty string straight into JSON.parse.
+    mockOkResponse({ candidates: [] })
+
+    await expect(smartAddChat([], 'plan my day')).rejects.toThrow(UNREADABLE)
+  })
+
+  it('reports the same error when the JSON is truncated mid-object', async () => {
+    mockOkResponse(candidateText('{"message":"On it","todos":[{"title":"bu'))
+
+    await expect(smartAddChat([], 'plan my day')).rejects.toThrow(UNREADABLE)
+  })
+
+  it('never surfaces a raw SyntaxError to the caller', async () => {
+    mockOkResponse(candidateText('not json at all'))
+
+    const error = await smartAddChat([], 'plan my day').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(SyntaxError)
+    expect((error as Error).message).toBe(UNREADABLE)
+  })
+
+  it('still parses a well-formed response', async () => {
+    mockOkResponse(
+      candidateText('{"message":"Here you go","todos":[{"title":"buy milk"}]}'),
+    )
+
+    const result = await smartAddChat([], 'plan my day')
+
+    expect(result.message).toBe('Here you go')
+    expect(result.todos).toHaveLength(1)
   })
 })
