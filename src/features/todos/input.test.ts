@@ -116,3 +116,99 @@ describe('time phrases', () => {
     expect(one('standup tomorrow at 09:30').title).toBe('standup')
   })
 })
+
+function many(text: string) {
+  const tasks = parseTaskInput(text, TODAY, 'monday')
+  if (tasks === null) throw new Error(`expected tasks, got escalation for: ${text}`)
+  return tasks
+}
+
+describe('splitting', () => {
+  it('splits on newlines', () => {
+    expect(many('buy milk\nwalk dog').map((t) => t.title)).toEqual(['buy milk', 'walk dog'])
+  })
+
+  it('splits on semicolons', () => {
+    expect(many('buy milk; walk dog').map((t) => t.title)).toEqual(['buy milk', 'walk dog'])
+  })
+
+  it('does not split on and', () => {
+    expect(many('buy bread and butter')).toHaveLength(1)
+  })
+
+  it('parses a date per segment', () => {
+    const [first, second] = many('buy milk today\nwalk dog tomorrow')
+    expect(first.dueAt).toBe('2026-08-24')
+    expect(second.dueAt).toBe('2026-08-25')
+  })
+})
+
+describe('subtasks', () => {
+  it('turns a colon list into subtasks', () => {
+    const task = one('Groceries: milk, eggs, bread')
+    expect(task.title).toBe('Groceries')
+    expect(task.subtasks).toEqual(['milk', 'eggs', 'bread'])
+  })
+
+  it('does not split commas without a colon', () => {
+    const task = one('milk, eggs, bread')
+    expect(task.title).toBe('milk, eggs, bread')
+    expect(task.subtasks).toEqual([])
+  })
+
+  it('needs at least two items after the colon', () => {
+    const task = one('Groceries: milk')
+    expect(task.subtasks).toEqual([])
+  })
+
+  it('keeps a date in the title part out of the subtasks', () => {
+    const task = one('Groceries tomorrow: milk, eggs')
+    expect(task.title).toBe('Groceries')
+    expect(task.dueAt).toBe('2026-08-25')
+    expect(task.subtasks).toEqual(['milk', 'eggs'])
+  })
+})
+
+describe('recurrence', () => {
+  it('parses daily', () => {
+    expect(one('stretch daily').recurrence).toEqual({ frequency: 'daily', interval: 1 })
+  })
+
+  it('parses every week', () => {
+    expect(one('water plants every week').recurrence).toEqual({
+      frequency: 'weekly',
+      interval: 1,
+    })
+  })
+
+  it('parses every N days', () => {
+    expect(one('water plants every 3 days').recurrence).toEqual({
+      frequency: 'daily',
+      interval: 3,
+    })
+  })
+
+  it('parses monthly and yearly', () => {
+    expect(one('rent monthly').recurrence?.frequency).toBe('monthly')
+    expect(one('mot yearly').recurrence?.frequency).toBe('yearly')
+  })
+
+  it('parses every weekday as weekly with the first due date on that day', () => {
+    const task = one('gym every monday')
+    expect(task.recurrence).toEqual({ frequency: 'weekly', interval: 1 })
+    expect(task.dueAt).toBe('2026-08-31')
+    expect(task.title).toBe('gym')
+  })
+})
+
+describe('tags', () => {
+  it('extracts hash tags and strips them from the title', () => {
+    const task = one('finish report #work #urgent')
+    expect(task.tagNames).toEqual(['work', 'urgent'])
+    expect(task.title).toBe('finish report')
+  })
+
+  it('does not guess tags from keywords', () => {
+    expect(one('buy groceries').tagNames).toEqual([])
+  })
+})

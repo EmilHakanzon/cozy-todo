@@ -160,21 +160,105 @@ function buildDueAt(
   return `${day}T${hh}:${mm}:00`
 }
 
+type TagMatch = { tagNames: string[]; rest: string }
+
+function matchTags(text: string): TagMatch {
+  const tagNames: string[] = []
+  const rest = text.replace(/#([\p{L}\p{N}_-]+)/gu, (_full, name: string) => {
+    tagNames.push(name.toLowerCase())
+    return ' '
+  })
+  return { tagNames, rest }
+}
+
+type RecurrenceMatch = { recurrence: Recurrence | null; weekday: number | null; rest: string }
+
+function matchRecurrence(text: string): RecurrenceMatch {
+  const everyN = text.match(/\bevery (\d+) (days?|weeks?|months?)\b/i)
+  if (everyN) {
+    const unit = everyN[2].toLowerCase()
+    const frequency = unit.startsWith('day')
+      ? 'daily'
+      : unit.startsWith('week')
+        ? 'weekly'
+        : 'monthly'
+    return {
+      recurrence: { frequency, interval: Number(everyN[1]) },
+      weekday: null,
+      rest: strip(text, everyN[0]),
+    }
+  }
+
+  const everyDay = text.match(new RegExp(`\\bevery (${WEEKDAYS.join('|')})\\b`, 'i'))
+  if (everyDay) {
+    return {
+      recurrence: { frequency: 'weekly', interval: 1 },
+      weekday: weekdayIndex(everyDay[1]),
+      rest: strip(text, everyDay[0]),
+    }
+  }
+
+  const simple = text.match(/\b(daily|every day|weekly|every week|monthly|every month|yearly|every year)\b/i)
+  if (simple) {
+    const phrase = simple[1].toLowerCase()
+    const frequency =
+      phrase === 'daily' || phrase === 'every day'
+        ? 'daily'
+        : phrase === 'weekly' || phrase === 'every week'
+          ? 'weekly'
+          : phrase === 'monthly' || phrase === 'every month'
+            ? 'monthly'
+            : 'yearly'
+    return {
+      recurrence: { frequency, interval: 1 },
+      weekday: null,
+      rest: strip(text, simple[0]),
+    }
+  }
+
+  return { recurrence: null, weekday: null, rest: text }
+}
+
+type ColonSplit = { titlePart: string; subtasks: string[] }
+
+function splitColonList(segment: string): ColonSplit {
+  const match = segment.match(/^(.+?):\s*(.+)$/)
+  if (!match) return { titlePart: segment, subtasks: [] }
+
+  const items = match[2]
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item !== '')
+
+  if (items.length < 2) return { titlePart: segment, subtasks: [] }
+  return { titlePart: match[1], subtasks: items }
+}
+
 function parseSegment(
   segment: string,
   today: Date,
   firstDay: 'monday' | 'sunday',
 ): ParsedInputTask {
-  const timeResult = matchTime(segment)
+  const { titlePart, subtasks } = splitColonList(segment)
+
+  const tagResult = matchTags(titlePart)
+  const recurrenceResult = matchRecurrence(tagResult.rest)
+  const timeResult = matchTime(recurrenceResult.rest)
   const dateResult = matchDate(timeResult.rest, today, firstDay)
+
+  const date =
+    dateResult.date ??
+    (recurrenceResult.weekday === null
+      ? null
+      : nextWeekday(startOfDay(today), recurrenceResult.weekday, 0))
 
   return {
     title: tidy(dateResult.rest),
     notes: '',
-    dueAt: buildDueAt(dateResult.date, timeResult.time, today),
-    subtasks: [],
-    tagNames: [],
-    recurrence: null,
+    dueAt: buildDueAt(date, timeResult.time, today),
+    subtasks,
+    tagNames: tagResult.tagNames,
+    recurrence: recurrenceResult.recurrence,
   }
 }
 
@@ -186,6 +270,14 @@ export function parseTaskInput(
   const trimmed = text.trim()
   if (trimmed === '') return null
 
-  const tasks = [parseSegment(trimmed, today, firstDay)].filter((t) => t.title !== '')
+  const segments = trimmed
+    .split(/[\n;]+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== '')
+
+  const tasks = segments
+    .map((segment) => parseSegment(segment, today, firstDay))
+    .filter((task) => task.title !== '')
+
   return tasks.length > 0 ? tasks : null
 }
