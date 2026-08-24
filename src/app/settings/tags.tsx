@@ -3,7 +3,7 @@ import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 import { SymbolView } from 'expo-symbols'
 
 import { SettingsScreenHeader } from '@/components/settings-screen-header'
-import { TAG_COLORS } from '@/features/tags/types'
+import { TagColorSwatches } from '@/components/tag-color-swatches'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useTagStore } from '@/stores/tag-store'
 import { useTodoStore } from '@/stores/todo-store'
@@ -133,38 +133,7 @@ export default function TagsSettingsScreen() {
                     borderColor: theme.color.border,
                   }}
                 />
-                <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-                  {TAG_COLORS.map((color) => {
-                    const p = tagPalettes[color]
-                    return (
-                      <Pressable
-                        key={color}
-                        onPress={() => setEditColor(color)}
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          backgroundColor: p.background,
-                          borderWidth: editColor === color ? 2 : 0,
-                          borderColor: p.text,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {editColor === color && (
-                          <View
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: 5,
-                              backgroundColor: p.text,
-                            }}
-                          />
-                        )}
-                      </Pressable>
-                    )
-                  })}
-                </View>
+                <TagColorSwatches selected={editColor} onSelect={setEditColor} />
                 <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
                   <Pressable
                     onPress={cancelEdit}

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 
+import { TagColorSwatches } from '@/components/tag-color-swatches'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useTagStore } from '@/stores/tag-store'
-import { TAG_COLORS } from '@/features/tags/types'
 import { tagColorsFor } from '@/themes/tag-color'
 import { typography } from '@/themes/typography'
 
@@ -99,31 +99,7 @@ export function TagPicker({ selectedTagIds, onToggleTag }: TagPickerProps) {
               borderColor: theme.color.border,
             }}
           />
-          <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-            {TAG_COLORS.map((color) => {
-              const palette = tagPalettes[color]
-              return (
-                <Pressable
-                  key={color}
-                  onPress={() => setNewColor(color)}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: palette.background,
-                    borderWidth: newColor === color ? 2 : 0,
-                    borderColor: palette.text,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {newColor === color && (
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: palette.text }} />
-                  )}
-                </Pressable>
-              )
-            })}
-          </View>
+          <TagColorSwatches selected={newColor} onSelect={setNewColor} />
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
             <Pressable
               onPress={() => { setShowCreate(false); setNewName('') }}
