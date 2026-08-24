@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ChatEmptyState } from '@/components/daily-plan/chat-empty-state'
+import { ChatHistorySheet } from '@/components/daily-plan/chat-history-sheet'
 import { ChatInputBar } from '@/components/daily-plan/chat-input-bar'
 import { ChatMessageBubble } from '@/components/daily-plan/chat-message-bubble'
 import { PlanBacklogRow } from '@/components/daily-plan/plan-backlog-row'
@@ -52,6 +53,11 @@ const CLEAR_ICON: SymbolViewProps['name'] = {
   android: 'refresh',
   web: 'refresh',
 }
+const HISTORY_ICON: SymbolViewProps['name'] = {
+  ios: 'clock.arrow.circlepath',
+  android: 'history',
+  web: 'history',
+}
 
 export default function DailyPlanScreen() {
   const { theme } = useAppTheme()
@@ -77,6 +83,7 @@ export default function DailyPlanScreen() {
   } = useDailyPlanChat()
 
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const [historyVisible, setHistoryVisible] = useState(false)
   const chatScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
 
@@ -148,14 +155,25 @@ export default function DailyPlanScreen() {
         ) : (
           <View />
         )}
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-        >
-          <SymbolView name={CLOSE_ICON} size={20} tintColor={theme.color.text2} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+          <Pressable
+            onPress={() => setHistoryVisible(true)}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+          >
+            <SymbolView name={HISTORY_ICON} size={20} tintColor={theme.color.text2} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+          >
+            <SymbolView name={CLOSE_ICON} size={20} tintColor={theme.color.text2} />
+          </Pressable>
+        </View>
       </View>
+
+      <ChatHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} />
 
       <ScrollView
         ref={chatScrollRef}
