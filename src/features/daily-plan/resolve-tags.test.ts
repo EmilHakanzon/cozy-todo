@@ -27,11 +27,18 @@ describe('resolveTags', () => {
     expect(tag.name).toBe('groceries')
   })
 
-  it('gives the same unknown name the same colour every time', () => {
+  it('gives the same unknown name the same colour regardless of the tag store', () => {
     const first = resolveTags(['groceries'], existing)[0]
     const second = resolveTags(['groceries'], {})[0]
 
     expect(first.color).toBe(second.color)
+  })
+
+  it('hashes the colour on the lowercased name, so casing cannot change it', () => {
+    const lower = resolveTags(['groceries'], {})[0]
+    const upper = resolveTags(['GROCERIES'], {})[0]
+
+    expect(upper.color).toBe(lower.color)
   })
 
   it('dedupes case-insensitively, keeping the first occurrence', () => {
