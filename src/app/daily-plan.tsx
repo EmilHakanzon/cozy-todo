@@ -262,7 +262,7 @@ export default function DailyPlanScreen() {
         )}
 
         {/* Overdue card */}
-        {overdue.length > 0 && !hasChatContent && (
+        {hasHydrated && overdue.length > 0 && !hasChatContent && (
           <View
             style={{
               marginHorizontal: theme.spacing.lg,
@@ -294,7 +294,7 @@ export default function DailyPlanScreen() {
         )}
 
         {/* Today card */}
-        {!hasChatContent && (
+        {hasHydrated && !hasChatContent && (
           <View
             style={{
               marginHorizontal: theme.spacing.lg,
@@ -345,7 +345,7 @@ export default function DailyPlanScreen() {
         )}
 
         {/* Backlog — pick tasks */}
-        {backlog.length > 0 && !hasChatContent && (
+        {hasHydrated && backlog.length > 0 && !hasChatContent && (
           <View style={{ marginHorizontal: theme.spacing.lg }}>
             <PlanSectionLabel
               label="ADD TO TODAY"
