@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { useDailyPlanStore } from './daily-plan-store'
 
-import type { PlanChatMessage } from '@/features/daily-plan/types'
+import type { PlanChat, PlanChatMessage } from '@/features/daily-plan/types'
 
 const store = () => useDailyPlanStore.getState()
 const chats = () => useDailyPlanStore.getState().chatsById
@@ -163,20 +163,33 @@ describe('deleteChat', () => {
 })
 
 describe('retention', () => {
-  it('keeps at most 30 chats', () => {
-    for (let i = 0; i < 33; i++) {
-      const id = store().ensureActiveChat()
-      store().appendMessage(userMsg(`chat ${i}`))
-      // Stagger updatedAt so recency ordering is deterministic.
-      useDailyPlanStore.setState((s) => ({
-        chatsById: {
-          ...s.chatsById,
-          [id]: { ...s.chatsById[id], updatedAt: `2026-08-${String(i + 1).padStart(2, '0')}T10:00:00.000Z` },
-        },
-      }))
-      store().finishActiveChat(0)
+  it('keeps the 30 most recently updated chats and drops the oldest', () => {
+    // Fixed, staggered timestamps: finishActiveChat stamps wall-clock time,
+    // which cannot distinguish chats created in the same millisecond.
+    const seeded: Record<string, PlanChat> = {}
+    for (let i = 0; i < 31; i++) {
+      const id = `seed-${String(i).padStart(2, '0')}`
+      const stamp = `2026-07-${String(i + 1).padStart(2, '0')}T10:00:00.000Z`
+      seeded[id] = {
+        id,
+        title: id,
+        messages: [{ role: 'user', text: id }],
+        createdTodoCount: 0,
+        createdAt: stamp,
+        updatedAt: stamp,
+      }
     }
+    useDailyPlanStore.setState({ chatsById: seeded, activeChatId: null, draft: '' })
+
+    // One more chat finished now — its wall-clock stamp beats every seed.
+    const fresh = store().ensureActiveChat()
+    store().appendMessage(userMsg('freshest'))
+    store().finishActiveChat(2)
 
     expect(Object.keys(chats())).toHaveLength(30)
+    expect(chats()[fresh]).toBeDefined()
+    expect(chats()['seed-30']).toBeDefined()
+    expect(chats()['seed-00']).toBeUndefined()
+    expect(chats()['seed-01']).toBeUndefined()
   })
 })
