@@ -29,8 +29,8 @@ import {
   getTodayTodos,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
-import { smartAddChat, type ChatMessage, type ParsedTodo } from '@/lib/smart-add'
-import { useListStore } from '@/stores/list-store'
+import { useDailyPlanChat } from '@/hooks/use-daily-plan-chat'
+import { useDailyPlanStore } from '@/stores/daily-plan-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
@@ -58,16 +58,24 @@ export default function DailyPlanScreen() {
   const insets = useSafeAreaInsets()
   const todosById = useTodoStore((s) => s.todosById)
   const toggleTodo = useTodoStore((s) => s.toggleTodo)
-  const createTodo = useTodoStore((s) => s.createTodo)
   const updateTodo = useTodoStore((s) => s.updateTodo)
-  const listsById = useListStore((s) => s.listsById)
   const timeFormat = useSettingsStore((s) => s.timeFormat)
+  const hasHydrated = useDailyPlanStore((s) => s.hasHydrated)
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [isSending, setIsSending] = useState(false)
-  const [chatError, setChatError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
+  const {
+    messages,
+    draft,
+    setDraft,
+    isSending,
+    error,
+    successMsg,
+    hasChatContent,
+    latestTasks,
+    send,
+    createTasks,
+    startNewChat,
+  } = useDailyPlanChat()
+
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const chatScrollRef = useRef<ScrollView>(null)
   const inputRef = useRef<TextInput>(null)
@@ -86,21 +94,6 @@ export default function DailyPlanScreen() {
       hideSub.remove()
     }
   }, [])
-
-  const latestTodos = useMemo(() => {
-    for (let i = chatMessages.length - 1; i >= 0; i--) {
-      const msg = chatMessages[i]
-      if (msg.role === 'ai' && msg.todos && msg.todos.length > 0) {
-        return msg.todos
-      }
-    }
-    return [] as ParsedTodo[]
-  }, [chatMessages])
-
-  const defaultListId = useMemo(() => {
-    const lists = Object.values(listsById)
-    return lists.length > 0 ? lists[0].id : ''
-  }, [listsById])
 
   const allRootTodos = useMemo(() => getAllRootTodos(todosById), [todosById])
   const overdue = useMemo(() => getOverdueTodos(todosById), [todosById])
@@ -122,69 +115,6 @@ export default function DailyPlanScreen() {
     [updateTodo]
   )
 
-  const handleSend = useCallback(async () => {
-    const trimmed = chatInput.trim()
-    if (!trimmed || isSending) return
-
-    const userMsg: ChatMessage = { role: 'user', text: trimmed }
-    setChatMessages((prev) => [...prev, userMsg])
-    setChatInput('')
-    setIsSending(true)
-    setChatError('')
-    setSuccessMsg('')
-
-    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100)
-
-    try {
-      const result = await smartAddChat(chatMessages, trimmed)
-      const aiMsg: ChatMessage = {
-        role: 'ai',
-        text: result.message,
-        todos: result.todos,
-      }
-      setChatMessages((prev) => [...prev, aiMsg])
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100)
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : 'Something went wrong')
-    } finally {
-      setIsSending(false)
-    }
-  }, [chatInput, chatMessages, isSending])
-
-  const handleCreateTodos = useCallback(() => {
-    if (latestTodos.length === 0) return
-
-    for (const parsed of latestTodos) {
-      const parentId = createTodo({
-        listId: defaultListId,
-        title: parsed.title,
-        notes: parsed.notes,
-        dueAt: parsed.dueAt,
-      })
-
-      for (const subtaskTitle of parsed.subtasks) {
-        createTodo({
-          listId: defaultListId,
-          parentId,
-          title: subtaskTitle,
-        })
-      }
-    }
-
-    const count = latestTodos.length
-    setChatMessages([])
-    setSuccessMsg(`Created ${count} ${count === 1 ? 'task' : 'tasks'}`)
-    setTimeout(() => setSuccessMsg(''), 3000)
-  }, [latestTodos, defaultListId, createTodo])
-
-  const handleClearChat = useCallback(() => {
-    setChatMessages([])
-    setChatError('')
-    setSuccessMsg('')
-  }, [])
-
-  const hasChatContent = chatMessages.length > 0
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.color.background }}
@@ -203,7 +133,7 @@ export default function DailyPlanScreen() {
       >
         {hasChatContent ? (
           <Pressable
-            onPress={handleClearChat}
+            onPress={startNewChat}
             hitSlop={8}
             style={({ pressed }) => ({
               opacity: pressed ? 0.5 : 1,
@@ -242,85 +172,93 @@ export default function DailyPlanScreen() {
         {/* Hero greeting card */}
         <PlanHero totalPlanned={totalPlanned} />
 
-        {/* Chat messages */}
-        {chatMessages.length === 0 && !successMsg && (
-          <ChatEmptyState
-            onPickExample={(text) => {
-              setChatInput(text)
-              inputRef.current?.focus()
-            }}
-          />
-        )}
+        {hasHydrated && (
+          <>
+            {/* Chat messages */}
+            {!hasChatContent && successMsg === '' && (
+              <ChatEmptyState
+                onPickExample={(text) => {
+                  setDraft(text)
+                  inputRef.current?.focus()
+                }}
+              />
+            )}
 
-        {successMsg !== '' && (
-          <View
-            style={{
-              marginHorizontal: theme.spacing.lg,
-              backgroundColor: theme.color.accentSoft,
-              borderRadius: theme.radius.lg,
-              padding: theme.spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              marginBottom: theme.spacing.md,
-            }}
-          >
-            <SymbolView name={CHECK_ICON} size={20} tintColor={theme.color.accent} />
-            <Text style={{ ...typography.body, color: theme.color.accent }}>{successMsg}</Text>
-          </View>
-        )}
-
-        {chatMessages.map((msg, i) => (
-          <ChatMessageBubble key={i} message={msg} timeFormat={timeFormat} />
-        ))}
-
-        {isSending && (
-          <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}>
-            <View
-              style={{
-                backgroundColor: theme.color.surfaceSoft,
-                borderRadius: theme.radius.lg,
-                borderBottomLeftRadius: theme.radius.sm,
-                paddingHorizontal: theme.spacing.md,
-                paddingVertical: theme.spacing.sm,
-                alignSelf: 'flex-start',
-              }}
-            >
-              <ActivityIndicator color={theme.color.accent} size="small" />
-            </View>
-          </View>
-        )}
-
-        {chatError !== '' && (
-          <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}>
-            <Text style={{ ...typography.meta, color: theme.color.overdue }}>{chatError}</Text>
-          </View>
-        )}
-
-        {/* Create tasks button */}
-        {latestTodos.length > 0 && !isSending && (
-          <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xs }}>
-            <Pressable
-              onPress={handleCreateTodos}
-              style={({ pressed }) => ({
-                backgroundColor: theme.color.accent,
-                borderRadius: theme.radius.md,
-                paddingVertical: theme.spacing.sm,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text
+            {successMsg !== '' && (
+              <View
                 style={{
-                  ...typography.body,
-                  fontFamily: 'Manrope_600SemiBold',
-                  color: '#ffffff',
+                  marginHorizontal: theme.spacing.lg,
+                  backgroundColor: theme.color.accentSoft,
+                  borderRadius: theme.radius.lg,
+                  padding: theme.spacing.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                  marginBottom: theme.spacing.md,
                 }}
               >
-                Create {latestTodos.length === 1 ? 'task' : `${latestTodos.length} tasks`}
-              </Text>
-            </Pressable>
-          </View>
+                <SymbolView name={CHECK_ICON} size={20} tintColor={theme.color.accent} />
+                <Text style={{ ...typography.body, color: theme.color.accent }}>{successMsg}</Text>
+              </View>
+            )}
+
+            {messages.map((msg, i) => (
+              <ChatMessageBubble key={i} message={msg} timeFormat={timeFormat} />
+            ))}
+
+            {isSending && (
+              <View
+                style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}
+              >
+                <View
+                  style={{
+                    backgroundColor: theme.color.surfaceSoft,
+                    borderRadius: theme.radius.lg,
+                    borderBottomLeftRadius: theme.radius.sm,
+                    paddingHorizontal: theme.spacing.md,
+                    paddingVertical: theme.spacing.sm,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <ActivityIndicator color={theme.color.accent} size="small" />
+                </View>
+              </View>
+            )}
+
+            {error !== '' && (
+              <View
+                style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}
+              >
+                <Text style={{ ...typography.meta, color: theme.color.overdue }}>{error}</Text>
+              </View>
+            )}
+
+            {/* Create tasks button */}
+            {latestTasks.length > 0 && !isSending && (
+              <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xs }}>
+                <Pressable
+                  onPress={createTasks}
+                  style={({ pressed }) => ({
+                    backgroundColor: theme.color.accent,
+                    borderRadius: theme.radius.md,
+                    paddingVertical: theme.spacing.sm,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      ...typography.body,
+                      fontFamily: 'Manrope_600SemiBold',
+                      color: '#ffffff',
+                    }}
+                  >
+                    Create {latestTasks.length === 1 ? 'task' : `${latestTasks.length} tasks`}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </>
         )}
 
         {/* Overdue card */}
@@ -436,12 +374,9 @@ export default function DailyPlanScreen() {
       </ScrollView>
 
       <ChatInputBar
-        value={chatInput}
-        onChangeText={(text) => {
-          setChatInput(text)
-          setChatError('')
-        }}
-        onSend={handleSend}
+        value={draft}
+        onChangeText={setDraft}
+        onSend={send}
         isSending={isSending}
         isKeyboardVisible={isKeyboardVisible}
         placeholder={hasChatContent ? 'Refine or add more...' : 'Describe your tasks...'}

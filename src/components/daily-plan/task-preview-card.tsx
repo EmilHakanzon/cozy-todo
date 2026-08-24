@@ -3,10 +3,10 @@ import { Text, View } from 'react-native'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { typography } from '@/themes/typography'
 
-import type { ParsedTodo } from '@/lib/smart-add'
+import type { PlanTask } from '@/features/daily-plan/types'
 
 type TaskPreviewCardProps = {
-  tasks: ParsedTodo[]
+  tasks: PlanTask[]
   timeFormat: string
 }
 
@@ -41,7 +41,7 @@ function TaskPreviewRow({
   showBorder,
   timeFormat,
 }: {
-  task: ParsedTodo
+  task: PlanTask
   showBorder: boolean
   timeFormat: string
 }) {

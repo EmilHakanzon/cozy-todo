@@ -4,10 +4,10 @@ import { TaskPreviewCard } from '@/components/daily-plan/task-preview-card'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { typography } from '@/themes/typography'
 
-import type { ChatMessage } from '@/lib/smart-add'
+import type { PlanChatMessage } from '@/features/daily-plan/types'
 
 type ChatMessageBubbleProps = {
-  message: ChatMessage
+  message: PlanChatMessage
   timeFormat: string
 }
 
@@ -53,8 +53,8 @@ export function ChatMessageBubble({ message, timeFormat }: ChatMessageBubbleProp
             </Text>
           </View>
         )}
-        {message.todos && message.todos.length > 0 && (
-          <TaskPreviewCard tasks={message.todos} timeFormat={timeFormat} />
+        {message.tasks && message.tasks.length > 0 && (
+          <TaskPreviewCard tasks={message.tasks} timeFormat={timeFormat} />
         )}
       </View>
     </View>
