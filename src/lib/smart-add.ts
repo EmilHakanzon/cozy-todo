@@ -3,6 +3,7 @@ export type ParsedTodo = {
   dueAt: string | null
   notes: string
   subtasks: string[]
+  tags: string[]
 }
 
 export type SmartAddResult = {
@@ -36,12 +37,17 @@ If no date is mentioned, set dueAt to null.
 ALWAYS respond with valid JSON in this exact format, no markdown:
 {
   "message": "Your conversational response to the user",
-  "todos": [{"title":"string","dueAt":"string|null","notes":"string","subtasks":["string"]}]
+  "todos": [{"title":"string","dueAt":"string|null","notes":"string","subtasks":["string"],"tags":["string"]}]
 }
 
 The "todos" array should contain the CURRENT state of all tasks discussed so far.
 If the user is just chatting or asking a question and no tasks are ready yet, return an empty todos array.
-If the user says to change something, return the updated full list of tasks.`
+If the user says to change something, return the updated full list of tasks.
+
+Tags: add 0-3 short lowercase tags per task. Reuse one of the user's existing
+tags whenever it fits rather than inventing a near-duplicate. If nothing fits,
+omit tags rather than inventing one.
+The user's existing tags: {{TAGS}}`
 
 export function formatGeminiError(status: number, body: string): string {
   if (status === 429) {
@@ -62,16 +68,43 @@ export function formatGeminiError(status: number, body: string): string {
   return message !== '' ? message : 'Smart Add is unavailable right now.'
 }
 
+export function normalizeParsedTodos(raw: unknown): ParsedTodo[] {
+  if (!Array.isArray(raw)) return []
+
+  const todos: ParsedTodo[] = []
+  for (const item of raw) {
+    const title = typeof item?.title === 'string' ? item.title.trim() : ''
+    if (title === '') continue
+
+    todos.push({
+      title,
+      dueAt: typeof item.dueAt === 'string' ? item.dueAt : null,
+      notes: typeof item.notes === 'string' ? item.notes : '',
+      subtasks: Array.isArray(item.subtasks)
+        ? item.subtasks.filter((s: unknown) => typeof s === 'string')
+        : [],
+      tags: Array.isArray(item.tags)
+        ? item.tags.filter((t: unknown) => typeof t === 'string')
+        : [],
+    })
+  }
+  return todos
+}
+
 export async function smartAddChat(
   history: ChatMessage[],
   input: string,
+  existingTagNames: string[] = [],
 ): Promise<SmartAddResult> {
   if (!GEMINI_API_KEY) {
     throw new Error('Smart Add is not configured')
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const systemPrompt = SYSTEM_PROMPT.replace('{{TODAY}}', today)
+  const systemPrompt = SYSTEM_PROMPT.replace('{{TODAY}}', today).replace(
+    '{{TAGS}}',
+    existingTagNames.length > 0 ? existingTagNames.join(', ') : '(none yet)',
+  )
 
   const contents = history
     .map((msg) => ({
@@ -125,9 +158,7 @@ export async function smartAddChat(
   if (!parsed.message) {
     parsed.message = ''
   }
-  if (!parsed.todos || !Array.isArray(parsed.todos)) {
-    parsed.todos = []
-  }
+  parsed.todos = normalizeParsedTodos(parsed.todos)
 
   return parsed
 }

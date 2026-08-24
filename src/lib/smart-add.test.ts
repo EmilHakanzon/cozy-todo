@@ -5,7 +5,7 @@ vi.hoisted(() => {
   process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key'
 })
 
-import { formatGeminiError, smartAddChat } from './smart-add'
+import { formatGeminiError, normalizeParsedTodos, smartAddChat } from './smart-add'
 
 const quotaBody = JSON.stringify({
   error: {
@@ -104,5 +104,40 @@ describe('smartAddChat', () => {
 
     expect(result.message).toBe('Here you go')
     expect(result.todos).toHaveLength(1)
+  })
+})
+
+describe('normalizeParsedTodos', () => {
+  it('keeps well-formed tags', () => {
+    const todos = normalizeParsedTodos([
+      { title: 'a', dueAt: null, notes: '', subtasks: [], tags: ['work'] },
+    ])
+    expect(todos[0].tags).toEqual(['work'])
+  })
+
+  it('defaults a missing tags field to an empty array', () => {
+    const todos = normalizeParsedTodos([{ title: 'a' }])
+    expect(todos[0].tags).toEqual([])
+    expect(todos[0].subtasks).toEqual([])
+    expect(todos[0].notes).toBe('')
+    expect(todos[0].dueAt).toBeNull()
+  })
+
+  it('discards a tags field that is not an array of strings', () => {
+    const todos = normalizeParsedTodos([{ title: 'a', tags: 'work' }])
+    expect(todos[0].tags).toEqual([])
+  })
+
+  it('drops non-string entries inside tags', () => {
+    const todos = normalizeParsedTodos([{ title: 'a', tags: ['work', 7, null] }])
+    expect(todos[0].tags).toEqual(['work'])
+  })
+
+  it('discards entries with no usable title', () => {
+    expect(normalizeParsedTodos([{ notes: 'orphan' }, { title: 'ok' }])).toHaveLength(1)
+  })
+
+  it('returns an empty array for a non-array input', () => {
+    expect(normalizeParsedTodos(undefined)).toEqual([])
   })
 })

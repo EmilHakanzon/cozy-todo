@@ -14,6 +14,7 @@ export function toAiHistory(messages: PlanChatMessage[]): ChatMessage[] {
       dueAt: task.dueAt,
       notes: task.notes,
       subtasks: task.subtasks,
+      tags: task.tags.map((t) => t.name),
     })),
   }))
 }
