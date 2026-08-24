@@ -181,8 +181,8 @@ describe('setTaskTags', () => {
       role: 'ai',
       text: 'here you go',
       tasks: [
-        { title: 'a', notes: '', dueAt: null, subtasks: [], tags: [], recurrence: null },
-        { title: 'b', notes: '', dueAt: null, subtasks: [], tags: [], recurrence: null },
+        { title: 'a', notes: '', dueAt: null, subtasks: [], tags: [] },
+        { title: 'b', notes: '', dueAt: null, subtasks: [], tags: [] },
       ],
     })
 

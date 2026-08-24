@@ -1,5 +1,4 @@
 import type { TagColor, TagId } from '@/features/tags/types'
-import type { Recurrence } from '@/features/todos/types'
 
 export type PlanChatId = string
 
@@ -16,7 +15,6 @@ export type PlanTask = {
   dueAt: string | null
   subtasks: string[]
   tags: PendingTag[]
-  recurrence: Recurrence | null
 }
 
 export type PlanChatMessage = {

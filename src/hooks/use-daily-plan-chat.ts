@@ -2,27 +2,14 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { toAiHistory } from '@/features/daily-plan/ai-history'
 import { resolveTags } from '@/features/daily-plan/resolve-tags'
-import { parseTaskInput } from '@/features/todos/input'
 import { smartAddChat } from '@/lib/smart-add'
 import { useDailyPlanStore } from '@/stores/daily-plan-store'
 import { useListStore } from '@/stores/list-store'
-import { useSettingsStore } from '@/stores/settings-store'
 import { useTagStore } from '@/stores/tag-store'
 import { useTodoStore } from '@/stores/todo-store'
 
 import type { PendingTag, PlanTask } from '@/features/daily-plan/types'
-
-/** Shown whenever Smart Add cannot produce a plan, whatever the cause. */
-const FALLBACK_REPLY =
-  'I could not work that one out — try something like "call mom tomorrow at 5".'
-
-/** A short canned line. Anything conversational is the AI's job. */
-function localReply(tasks: PlanTask[]): string {
-  if (tasks.length === 1) {
-    return tasks[0].dueAt ? 'Got it — 1 task with a due date.' : 'Got it — 1 task.'
-  }
-  return `Found ${tasks.length} tasks.`
-}
+import type { SmartAddResult } from '@/lib/smart-add'
 
 export function useDailyPlanChat() {
   const chatsById = useDailyPlanStore((s) => s.chatsById)
@@ -36,11 +23,9 @@ export function useDailyPlanChat() {
   const startNewChat = useDailyPlanStore((s) => s.startNewChat)
 
   const createTodo = useTodoStore((s) => s.createTodo)
-  const updateTodo = useTodoStore((s) => s.updateTodo)
   const listsById = useListStore((s) => s.listsById)
   const tagsById = useTagStore((s) => s.tagsById)
   const createTag = useTagStore((s) => s.createTag)
-  const firstDayOfWeek = useSettingsStore((s) => s.firstDayOfWeek)
 
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
@@ -93,59 +78,33 @@ export function useDailyPlanChat() {
     setSuccessMsg('')
 
     try {
-      // Follow-ups always go to the AI: refining a plan needs conversational
-      // state the local parser does not have.
-      const isFirstMessage = messages.length === 0
-      const local = isFirstMessage
-        ? parseTaskInput(trimmed, new Date(), firstDayOfWeek)
-        : null
-
-      if (local !== null) {
-        const tasks: PlanTask[] = local.map((task) => ({
-          title: task.title,
-          notes: task.notes,
-          dueAt: task.dueAt,
-          subtasks: task.subtasks,
-          tags: resolveTags(task.tagNames, tagsById),
-          recurrence: task.recurrence,
-        }))
-
-        // A tiny delay so the instant local answer does not feel jarring
-        // next to the AI path, which shows the same typing indicator.
-        await new Promise((resolve) => setTimeout(resolve, 250))
-
-        appendMessageTo(chatId, { role: 'ai', text: localReply(tasks), tasks })
+      let result: SmartAddResult
+      try {
+        result = await smartAddChat(toAiHistory(messages), trimmed, existingTagNames)
+      } catch (e) {
+        // The AI is the only path now, so a failure means the feature genuinely
+        // cannot produce a plan. Show the real reason -- smartAddChat already
+        // turns a 429 into "Smart Add has reached its daily limit."
+        setError(e instanceof Error ? e.message : 'Something went wrong')
         return
       }
 
-      try {
-        const result = await smartAddChat(
-          toAiHistory(messages),
-          trimmed,
-          existingTagNames,
-        )
-        appendMessageTo(chatId, {
-          role: 'ai',
-          text: result.message,
-          tasks: result.todos.map((todo) => ({
-            title: todo.title,
-            notes: todo.notes,
-            dueAt: todo.dueAt,
-            subtasks: todo.subtasks,
-            tags: resolveTags(todo.tags, tagsById),
-            recurrence: null,
-          })),
-        })
-      } catch {
-        // Quota, offline, unparseable JSON -- degrade to a plain hint rather
-        // than a red error. Smart Add is a bonus on top of the local parser.
-        appendMessageTo(chatId, { role: 'ai', text: FALLBACK_REPLY })
-      }
+      appendMessageTo(chatId, {
+        role: 'ai',
+        text: result.message,
+        tasks: result.todos.map((todo) => ({
+          title: todo.title,
+          notes: todo.notes,
+          dueAt: todo.dueAt,
+          subtasks: todo.subtasks,
+          tags: resolveTags(todo.tags, tagsById),
+        })),
+      })
     } catch (e) {
-      // A throw here means a bug in the local parser or tag resolution, not a
-      // network problem. Degrade for the user, but keep the real error visible.
-      console.error('Smart Add local path failed', e)
-      appendMessageTo(chatId, { role: 'ai', text: FALLBACK_REPLY })
+      // Tag resolution or a store write throwing must still leave the user with
+      // a message rather than a spinner that simply stops.
+      console.error('Smart Add failed', e)
+      setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
       setIsSending(false)
     }
@@ -153,7 +112,6 @@ export function useDailyPlanChat() {
     draft,
     isSending,
     messages,
-    firstDayOfWeek,
     tagsById,
     existingTagNames,
     ensureActiveChat,
@@ -197,10 +155,6 @@ export function useDailyPlanChat() {
         tagIds: task.tags.map(tagIdFor),
       })
 
-      if (task.recurrence !== null) {
-        updateTodo(parentId, { recurrence: task.recurrence })
-      }
-
       for (const subtaskTitle of task.subtasks) {
         createTodo({
           listId: defaultListId,
@@ -220,7 +174,6 @@ export function useDailyPlanChat() {
     tagsById,
     createTag,
     createTodo,
-    updateTodo,
     finishActiveChat,
   ])
 
