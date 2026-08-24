@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text } from 'react-native'
 
 import { TodoCheckbox } from '@/components/todo-checkbox'
 import { useAppTheme } from '@/hooks/use-app-theme'

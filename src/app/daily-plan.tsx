@@ -91,7 +91,11 @@ export default function DailyPlanScreen() {
     const isIOS = Platform.OS === 'ios'
     const showSub = Keyboard.addListener(isIOS ? 'keyboardWillShow' : 'keyboardDidShow', () => {
       setIsKeyboardVisible(true)
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 50)
+      // Same guard as onContentSizeChange: on a fresh screen there is nothing
+      // to scroll to, and scrolling anyway pushes the hero card out of view.
+      if (hasChatContent) {
+        setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 50)
+      }
     })
     const hideSub = Keyboard.addListener(isIOS ? 'keyboardWillHide' : 'keyboardDidHide', () =>
       setIsKeyboardVisible(false)
@@ -100,7 +104,7 @@ export default function DailyPlanScreen() {
       showSub.remove()
       hideSub.remove()
     }
-  }, [])
+  }, [hasChatContent])
 
   const allRootTodos = useMemo(() => getAllRootTodos(todosById), [todosById])
   const overdue = useMemo(() => getOverdueTodos(todosById), [todosById])
@@ -138,7 +142,7 @@ export default function DailyPlanScreen() {
           alignItems: 'center',
         }}
       >
-        {hasChatContent ? (
+        {hasHydrated && hasChatContent ? (
           <Pressable
             onPress={startNewChat}
             hitSlop={8}
@@ -397,7 +401,9 @@ export default function DailyPlanScreen() {
         onSend={send}
         isSending={isSending}
         isKeyboardVisible={isKeyboardVisible}
-        placeholder={hasChatContent ? 'Refine or add more...' : 'Describe your tasks...'}
+        placeholder={
+          hasHydrated && hasChatContent ? 'Refine or add more...' : 'Describe your tasks...'
+        }
         inputRef={inputRef}
       />
     </KeyboardAvoidingView>

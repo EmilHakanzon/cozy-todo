@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { sortChatsByRecency } from '@/features/daily-plan/chat-history'
 import { useAppTheme } from '@/hooks/use-app-theme'
@@ -16,6 +17,8 @@ type ChatHistorySheetProps = {
 
 function formatChatDate(iso: string): string {
   const date = new Date(iso)
+  // A malformed stamp would otherwise render the literal string "Invalid Date".
+  if (Number.isNaN(date.getTime())) return ''
   if (isToday(date)) return 'Today'
   if (isSameDay(date, addDays(new Date(), -1))) return 'Yesterday'
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -23,6 +26,7 @@ function formatChatDate(iso: string): string {
 
 export function ChatHistorySheet({ visible, onClose }: ChatHistorySheetProps) {
   const { theme } = useAppTheme()
+  const insets = useSafeAreaInsets()
   const chatsById = useDailyPlanStore((s) => s.chatsById)
   const activeChatId = useDailyPlanStore((s) => s.activeChatId)
   const resumeChat = useDailyPlanStore((s) => s.resumeChat)
@@ -62,7 +66,7 @@ export function ChatHistorySheet({ visible, onClose }: ChatHistorySheetProps) {
           borderTopLeftRadius: theme.radius.xl,
           borderTopRightRadius: theme.radius.xl,
           padding: theme.spacing.lg,
-          paddingBottom: 40,
+          paddingBottom: insets.bottom + theme.spacing.lg,
           gap: theme.spacing.lg,
           maxHeight: '70%',
         }}
