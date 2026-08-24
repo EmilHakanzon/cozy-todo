@@ -280,12 +280,7 @@ export default function DailyPlanScreen() {
         )}
 
         {chatMessages.map((msg, i) => (
-          <View
-            key={i}
-            style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm }}
-          >
-            <ChatMessageBubble message={msg} timeFormat={timeFormat} />
-          </View>
+          <ChatMessageBubble key={i} message={msg} timeFormat={timeFormat} />
         ))}
 
         {isSending && (
