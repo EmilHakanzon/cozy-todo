@@ -28,6 +28,7 @@ export function useDailyPlanChat() {
   const tagsById = useTagStore((s) => s.tagsById)
   const createTag = useTagStore((s) => s.createTag)
   const logUsage = useAiUsageStore((s) => s.logUsage)
+  const aiEnabled = useAiUsageStore((s) => s.aiEnabled)
 
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
@@ -67,6 +68,13 @@ export function useDailyPlanChat() {
   const send = useCallback(async () => {
     const trimmed = draft.trim()
     if (!trimmed || isSending) return
+
+    // Checked before the message is appended and the draft cleared, so turning
+    // the switch back on lets the user just hit send again on what they typed.
+    if (!aiEnabled) {
+      setError('Smart Add is turned off in Settings › AI Usage.')
+      return
+    }
 
     // Pin the chat the reply belongs to. "New chat" and the history sheet stay
     // tappable while the request is in flight, so activeChatId can move on --
@@ -121,6 +129,7 @@ export function useDailyPlanChat() {
   }, [
     draft,
     isSending,
+    aiEnabled,
     messages,
     tagsById,
     existingTagNames,

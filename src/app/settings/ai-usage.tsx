@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SettingsScreenHeader } from '@/components/settings-screen-header'
 import { SegmentedControl } from '@/components/segmented-control'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { impactMedium } from '@/lib/haptics'
 import { useAiUsageStore, aggregateUsage, filterByRange } from '@/stores/ai-usage-store'
 import { typography } from '@/themes/typography'
 
@@ -24,6 +25,10 @@ const TRASH_ICON: SymbolViewProps['name'] = {
   android: 'delete',
   web: 'delete',
 }
+
+// Taps on the pricing heading needed to reveal the kill switch. High enough
+// that nobody finds it by fidgeting, low enough to do one-handed.
+const REVEAL_TAPS = 7
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -128,8 +133,22 @@ export default function AiUsageScreen() {
   const insets = useSafeAreaInsets()
   const entries = useAiUsageStore((s) => s.entries)
   const clearUsage = useAiUsageStore((s) => s.clearUsage)
+  const aiEnabled = useAiUsageStore((s) => s.aiEnabled)
+  const setAiEnabled = useAiUsageStore((s) => s.setAiEnabled)
 
   const [range, setRange] = useState<Range>('day')
+  const [taps, setTaps] = useState(0)
+
+  // Shown once unlocked, and always while Smart Add is off -- a switch you can
+  // only reach through a secret gesture is one you can lock yourself out of.
+  const showKillSwitch = taps >= REVEAL_TAPS || !aiEnabled
+
+  const handlePricingTap = () => {
+    if (showKillSwitch) return
+    const next = taps + 1
+    setTaps(next)
+    if (next >= REVEAL_TAPS) impactMedium()
+  }
 
   const filtered = useMemo(() => filterByRange(entries, range), [entries, range])
   const stats = useMemo(() => aggregateUsage(filtered), [filtered])
@@ -218,9 +237,11 @@ export default function AiUsageScreen() {
             gap: theme.spacing.sm,
           }}
         >
-          <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
-            PRICING (GPT-4O-MINI)
-          </Text>
+          <Pressable onPress={handlePricingTap} hitSlop={8}>
+            <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
+              PRICING (GPT-4O-MINI)
+            </Text>
+          </Pressable>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ ...typography.body, color: theme.color.text }}>Input</Text>
             <Text style={{ ...typography.meta, color: theme.color.text2 }}>
@@ -264,6 +285,48 @@ export default function AiUsageScreen() {
               <Text style={{ ...typography.meta, color: theme.color.text2 }}>
                 {formatCost(allTimeStats.cost)}
               </Text>
+            </View>
+          </View>
+        )}
+
+        {showKillSwitch && (
+          <View
+            style={{
+              backgroundColor: theme.color.surfaceSoft,
+              borderRadius: theme.radius.md,
+              padding: theme.spacing.md,
+              gap: theme.spacing.sm,
+              borderWidth: 1,
+              borderColor: aiEnabled ? theme.color.border : theme.color.accent,
+            }}
+          >
+            <Text style={{ ...typography.sectionTitle, color: theme.color.text2 }}>
+              DEVELOPER
+            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: theme.spacing.sm,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.body, color: theme.color.text }}>
+                  Smart Add API
+                </Text>
+                <Text style={{ ...typography.meta, color: theme.color.text2 }}>
+                  {aiEnabled
+                    ? 'Off stops this device from calling OpenAI. Other devices keep working.'
+                    : 'Off — Smart Add will not send anything to OpenAI on this device.'}
+                </Text>
+              </View>
+              <Switch
+                value={aiEnabled}
+                onValueChange={setAiEnabled}
+                trackColor={{ false: theme.color.border, true: theme.color.accent }}
+                thumbColor="#ffffff"
+              />
             </View>
           </View>
         )}
