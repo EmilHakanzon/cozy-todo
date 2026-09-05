@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -19,7 +19,7 @@ const CLOSE_ICON: SymbolViewProps['name'] = { ios: 'xmark.circle.fill', android:
 export function QuickAddModal() {
   const { theme, resolvedTheme } = useAppTheme()
   const insets = useSafeAreaInsets()
-  const { isOpen, defaultListId, defaultParentId, close } = useQuickAddStore()
+  const { isOpen, defaultListId, defaultParentId, defaultDueDate, close } = useQuickAddStore()
   const createTodo = useTodoStore((s) => s.createTodo)
   const listsById = useListStore((s) => s.listsById)
 
@@ -30,6 +30,10 @@ export function QuickAddModal() {
   const [title, setTitle] = useState('')
   const [selectedListId, setSelectedListId] = useState<string | null>(null)
   const [dueDate, setDueDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOpen) setDueDate(defaultDueDate)
+  }, [isOpen, defaultDueDate])
 
   const listId = selectedListId ?? defaultListId ?? firstListId
   const selectedList = listId ? listsById[listId] : null

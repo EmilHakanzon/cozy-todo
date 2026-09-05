@@ -11,6 +11,7 @@ import { computeNextDueDate } from '@/lib/recurrence'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { useSettingsStore } from '@/stores/settings-store'
+import { triggerWidgetUpdate } from '@/widgets/update-widget'
 
 
 type CreateTodoInput = {
@@ -119,6 +120,8 @@ export const useTodoStore = create<TodoState>()(
     const created = get().todosById[id]
     if (created) maybeScheduleReminder(created)
 
+    triggerWidgetUpdate()
+
     return id
   },
   updateTodo: (id, input) => {
@@ -159,6 +162,8 @@ export const useTodoStore = create<TodoState>()(
         }
       }
     }
+
+    triggerWidgetUpdate()
   },
   toggleTodo: (id) => {
     const existing = get().todosById[id]
@@ -179,6 +184,7 @@ export const useTodoStore = create<TodoState>()(
       }))
       const updated = get().todosById[id]
       if (updated) maybeScheduleReminder(updated)
+      triggerWidgetUpdate()
       return
     }
 
@@ -198,6 +204,8 @@ export const useTodoStore = create<TodoState>()(
         },
       },
     }))
+
+    triggerWidgetUpdate()
   },
   deleteTodo: (id) => {
     const todosById = get().todosById
@@ -222,6 +230,8 @@ export const useTodoStore = create<TodoState>()(
         todosById: nextTodoById,
       }
     })
+
+    triggerWidgetUpdate()
   },
   moveTodo: (id, targetParentId) => {
     const todosById = get().todosById
@@ -305,6 +315,8 @@ export const useTodoStore = create<TodoState>()(
 
       return { todosById: next }
     })
+
+    triggerWidgetUpdate()
   },
   reorderTodo: (id, newPosition) => {
     const todosById = get().todosById
@@ -332,6 +344,8 @@ export const useTodoStore = create<TodoState>()(
       })
       return { todosById: next }
     })
+
+    triggerWidgetUpdate()
   },
 }),
  {

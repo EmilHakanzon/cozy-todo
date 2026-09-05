@@ -41,6 +41,27 @@
         {
           "calendarPermission": "Planora shows the events from the calendars you pick alongside your tasks."
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [
+            "./assets/fonts/Manrope_400Regular.ttf",
+            "./assets/fonts/Manrope_600SemiBold.ttf"
+          ],
+          "widgets": [
+            {
+              "name": "TodoToday",
+              "label": "Planora — Today",
+              "description": "Shows today's tasks with quick add actions",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ],
     "runtimeVersion": {

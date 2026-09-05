@@ -12,6 +12,12 @@ export default defineConfig({
       'expo-notifications': fileURLToPath(
         new URL('./src/test/expo-notifications-mock.ts', import.meta.url)
       ),
+      'react-native-android-widget': fileURLToPath(
+        new URL('./src/test/react-native-android-widget-mock.ts', import.meta.url)
+      ),
+      'react-native': fileURLToPath(
+        new URL('./src/test/react-native-mock.ts', import.meta.url)
+      ),
     },
   },
   test: {
