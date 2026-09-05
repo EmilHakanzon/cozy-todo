@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SettingsRow } from '@/components/settings-row'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useCalendarStore } from '@/stores/calendar-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useTagStore } from '@/stores/tag-store'
 import { useThemeStore } from '@/stores/theme-store'
@@ -31,6 +32,7 @@ const ICONS = {
   weather: { ios: 'cloud.sun', android: 'partly_cloudy_day', web: 'partly_cloudy_day' } as SymbolViewProps['name'],
   reminders: { ios: 'bell', android: 'notifications', web: 'notifications' } as SymbolViewProps['name'],
   dailyPlan: { ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' } as SymbolViewProps['name'],
+  smartAdd: { ios: 'brain', android: 'psychology', web: 'psychology' } as SymbolViewProps['name'],
   sound: { ios: 'speaker.wave.2', android: 'volume_up', web: 'volume_up' } as SymbolViewProps['name'],
   backup: { ios: 'icloud.and.arrow.up', android: 'cloud_upload', web: 'cloud_upload' } as SymbolViewProps['name'],
   privacy: { ios: 'lock.shield', android: 'shield', web: 'shield' } as SymbolViewProps['name'],
@@ -62,8 +64,9 @@ export default function SettingsScreen() {
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const themePreference = useThemeStore((s) => s.preference)
-  const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled, weatherEnabled, weatherCity } = useSettingsStore()
+  const { firstDayOfWeek, timeFormat, defaultView, remindersEnabled, weatherEnabled, weatherCity, dailyPlanEnabled } = useSettingsStore()
   const tagCount = useTagStore((s) => Object.keys(s.tagsById).length)
+  const selectedCalendarCount = useCalendarStore((s) => s.selectedCalendarIds.length)
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.background }}>
@@ -147,9 +150,20 @@ export default function SettingsScreen() {
         <SectionHeader title="INTEGRATIONS" />
         <SettingsRow
           icon={ICONS.calendar}
-          label="Google Calendar"
-          value="Not connected"
-          onPress={() => router.push('/settings/google-calendar')}
+          label="Calendar"
+          value={
+            selectedCalendarCount > 0
+              ? `${selectedCalendarCount} shown`
+              : 'Off'
+          }
+          onPress={() => router.push('/settings/calendar')}
+        />
+        <SettingsRow
+          icon={ICONS.smartAdd}
+          label="Smart Add (AI)"
+          value="AI-powered tasks"
+          onPress={() => router.push('/settings/smart-add')}
+          onLongPress={() => router.push('/settings/ai-usage')}
         />
         <SettingsRow
           icon={ICONS.import}
@@ -168,8 +182,8 @@ export default function SettingsScreen() {
         <SettingsRow
           icon={ICONS.dailyPlan}
           label="Daily plan"
-          value="Off"
-          disabled
+          value={dailyPlanEnabled ? 'On' : 'Off'}
+          onPress={() => router.push('/settings/daily-plan')}
         />
         <SettingsRow
           icon={ICONS.sound}

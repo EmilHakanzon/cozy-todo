@@ -11,6 +11,7 @@ type SettingsRowProps = {
   label: string
   value?: string
   onPress?: () => void
+  onLongPress?: () => void
   disabled?: boolean
   destructive?: boolean
 }
@@ -26,6 +27,7 @@ export function SettingsRow({
   label,
   value,
   onPress,
+  onLongPress,
   disabled = false,
   destructive = false,
 }: SettingsRowProps) {
@@ -34,6 +36,7 @@ export function SettingsRow({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={disabled || !onPress}
       style={({ pressed }) => ({
         flexDirection: 'row',

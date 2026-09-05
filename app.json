@@ -19,7 +19,7 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -34,6 +34,12 @@
             "backgroundColor": "#191b18",
             "image": "./assets/images/splash-icon-dark.png"
           }
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Planora shows the events from the calendars you pick alongside your tasks."
         }
       ]
     ],

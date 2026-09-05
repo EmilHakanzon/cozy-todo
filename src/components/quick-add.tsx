@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, Tex
 import { SymbolView } from 'expo-symbols'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { toDateString } from '@/lib/date-utils'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useListStore } from '@/stores/list-store'
 import { useQuickAddStore } from '@/stores/quick-add-store'
@@ -51,9 +52,7 @@ export function QuickAddModal() {
     if (dueDate) {
       setDueDate(null)
     } else {
-      const today = new Date()
-      today.setHours(9, 0, 0, 0)
-      setDueDate(today.toISOString())
+      setDueDate(toDateString(new Date()))
     }
   }
 

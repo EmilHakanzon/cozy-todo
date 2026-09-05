@@ -23,6 +23,11 @@ import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
 
+const PLAN_ICON: SymbolViewProps['name'] = {
+  ios: 'sparkles',
+  android: 'auto_awesome',
+  web: 'auto_awesome',
+}
 const SEARCH_ICON: SymbolViewProps['name'] = {
   ios: 'magnifyingglass',
   android: 'search',
@@ -109,6 +114,13 @@ export default function TodayScreen() {
         subtitle={dateStr}
         rightAction={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <Pressable
+              onPress={() => router.push('/daily-plan')}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SymbolView name={PLAN_ICON} size={22} tintColor={theme.color.accent} />
+            </Pressable>
             <Pressable
               onPress={() => router.push('/search')}
               hitSlop={8}

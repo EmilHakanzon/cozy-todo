@@ -78,6 +78,49 @@ export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync()
 }
 
+const DAILY_PLAN_ID = 'daily-plan'
+
+export async function scheduleDailyPlanNotification(
+  time: string,
+  todayCount: number,
+  overdueCount: number,
+): Promise<void> {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
+  await Notifications.cancelScheduledNotificationAsync(DAILY_PLAN_ID).catch(() => {})
+
+  const [hours, minutes] = time.split(':').map(Number)
+
+  const parts: string[] = []
+  if (overdueCount > 0) parts.push(`${overdueCount} overdue`)
+  if (todayCount > 0) parts.push(`${todayCount} scheduled`)
+  const body = parts.length > 0
+    ? `You have ${parts.join(' and ')} today`
+    : 'No tasks scheduled — enjoy your day!'
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_PLAN_ID,
+    content: {
+      title: 'Good morning ☀️',
+      body,
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: hours,
+      minute: minutes,
+    },
+  })
+}
+
+export async function cancelDailyPlanNotification(): Promise<void> {
+  const Notifications = getNotifications()
+  if (!Notifications) return
+
+  await Notifications.cancelScheduledNotificationAsync(DAILY_PLAN_ID).catch(() => {})
+}
+
 export async function rescheduleAllReminders(
   todosById: Record<TodoId, Todo>,
 ): Promise<void> {

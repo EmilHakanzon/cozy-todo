@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { toAiHistory } from '@/features/daily-plan/ai-history'
 import { resolveTags } from '@/features/daily-plan/resolve-tags'
 import { smartAddChat } from '@/lib/smart-add'
+import { useAiUsageStore } from '@/stores/ai-usage-store'
 import { useDailyPlanStore } from '@/stores/daily-plan-store'
 import { useListStore } from '@/stores/list-store'
 import { useTagStore } from '@/stores/tag-store'
@@ -26,6 +27,7 @@ export function useDailyPlanChat() {
   const listsById = useListStore((s) => s.listsById)
   const tagsById = useTagStore((s) => s.tagsById)
   const createTag = useTagStore((s) => s.createTag)
+  const logUsage = useAiUsageStore((s) => s.logUsage)
 
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
@@ -89,6 +91,14 @@ export function useDailyPlanChat() {
         return
       }
 
+      if (result.usage) {
+        logUsage({
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+          model: 'gpt-4o-mini',
+        })
+      }
+
       appendMessageTo(chatId, {
         role: 'ai',
         text: result.message,
@@ -118,6 +128,7 @@ export function useDailyPlanChat() {
     appendMessage,
     appendMessageTo,
     setDraft,
+    logUsage,
   ])
 
   const createTasks = useCallback(() => {

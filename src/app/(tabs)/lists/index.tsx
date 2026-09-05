@@ -19,8 +19,6 @@ export default function ListsScreen() {
   const lists = useMemo(() => Object.values(listsById), [listsById])
   const [showCreateSheet, setShowCreateSheet] = useState(false)
 
-  const lists = useMemo(() => Object.values(listsById), [listsById])
-
   const totalTasks = useMemo(
     () => lists.reduce((sum, list) => sum + getTodoCountForList(todosById, list.id), 0),
     [lists, todosById],

@@ -16,6 +16,8 @@ type SettingsState = {
   remindersEnabled: boolean
   weatherEnabled: boolean
   weatherCity: string
+  dailyPlanEnabled: boolean
+  dailyPlanTime: string
   setFirstDayOfWeek: (value: FirstDayOfWeek) => void
   setTimeFormat: (value: TimeFormat) => void
   setDefaultView: (value: DefaultView) => void
@@ -23,6 +25,8 @@ type SettingsState = {
   setRemindersEnabled: (value: boolean) => void
   setWeatherEnabled: (value: boolean) => void
   setWeatherCity: (value: string) => void
+  setDailyPlanEnabled: (value: boolean) => void
+  setDailyPlanTime: (value: string) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -35,7 +39,8 @@ export const useSettingsStore = create<SettingsState>()(
       remindersEnabled: false,
       weatherEnabled: true,
       weatherCity: '',
-
+      dailyPlanEnabled: false,
+      dailyPlanTime: '08:00',
       setFirstDayOfWeek: (value) => set({ firstDayOfWeek: value }),
       setTimeFormat: (value) => set({ timeFormat: value }),
       setDefaultView: (value) => set({ defaultView: value }),
@@ -43,6 +48,8 @@ export const useSettingsStore = create<SettingsState>()(
       setRemindersEnabled: (value) => set({ remindersEnabled: value }),
       setWeatherEnabled: (value) => set({ weatherEnabled: value }),
       setWeatherCity: (value) => set({ weatherCity: value }),
+      setDailyPlanEnabled: (value) => set({ dailyPlanEnabled: value }),
+      setDailyPlanTime: (value) => set({ dailyPlanTime: value }),
     }),
     {
       name: 'app-settings',
@@ -55,6 +62,8 @@ export const useSettingsStore = create<SettingsState>()(
         remindersEnabled: state.remindersEnabled,
         weatherEnabled: state.weatherEnabled,
         weatherCity: state.weatherCity,
+        dailyPlanEnabled: state.dailyPlanEnabled,
+        dailyPlanTime: state.dailyPlanTime,
       }),
     },
   ),

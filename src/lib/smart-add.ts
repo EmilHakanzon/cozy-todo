@@ -1,3 +1,5 @@
+import { toDateString } from '@/lib/date-utils'
+
 export type ParsedTodo = {
   title: string
   dueAt: string | null
@@ -9,6 +11,7 @@ export type ParsedTodo = {
 export type SmartAddResult = {
   message: string
   todos: ParsedTodo[]
+  usage?: { promptTokens: number; completionTokens: number }
 }
 
 export type ChatMessage = {
@@ -17,8 +20,8 @@ export type ChatMessage = {
   todos?: ParsedTodo[]
 }
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? ''
-const GEMINI_MODEL = 'gemini-3.5-flash'
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? ''
+const OPENAI_MODEL = 'gpt-4o-mini'
 
 const SYSTEM_PROMPT = `You are Planora's task planning assistant. Help the user plan their tasks through natural conversation.
 
@@ -49,12 +52,12 @@ tags whenever it fits rather than inventing a near-duplicate. If nothing fits,
 omit tags rather than inventing one.
 The user's existing tags: {{TAGS}}`
 
-export function formatGeminiError(status: number, body: string): string {
+export function formatOpenAIError(status: number, body: string): string {
   if (status === 429) {
-    return 'Smart Add has reached its daily limit. It resets tomorrow.'
+    return 'Smart Add has reached its rate limit. Try again in a moment.'
   }
 
-  if (status === 400 || status === 403) {
+  if (status === 401) {
     return 'The Smart Add API key looks invalid. Check your configuration.'
   }
 
@@ -96,54 +99,49 @@ export async function smartAddChat(
   input: string,
   existingTagNames: string[] = [],
 ): Promise<SmartAddResult> {
-  if (!GEMINI_API_KEY) {
+  if (!OPENAI_API_KEY) {
     throw new Error('Smart Add is not configured')
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString(new Date())
   const systemPrompt = SYSTEM_PROMPT.replace('{{TODAY}}', today).replace(
     '{{TAGS}}',
     existingTagNames.length > 0 ? existingTagNames.join(', ') : '(none yet)',
   )
 
-  const contents = history
-    .map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [
-        {
-          text:
-            msg.role === 'user'
-              ? msg.text
-              : JSON.stringify({ message: msg.text, todos: msg.todos ?? [] }),
-        },
-      ],
-    }))
-    .concat([{ role: 'user', parts: [{ text: input }] }])
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    ...history.map((msg) => ({
+      role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content:
+        msg.role === 'user'
+          ? msg.text
+          : JSON.stringify({ message: msg.text, todos: msg.todos ?? [] }),
+    })),
+    { role: 'user' as const, content: input },
+  ]
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: {
-          temperature: 0.3,
-          responseMimeType: 'application/json',
-        },
-      }),
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
-  )
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      messages,
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    }),
+  })
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(formatGeminiError(res.status, body))
+    throw new Error(formatOpenAIError(res.status, body))
   }
 
   const data = await res.json()
-  const content: string =
-    data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  const content: string = data.choices?.[0]?.message?.content ?? ''
 
   // A 200 can still carry no usable text -- a safety block, a recitation stop,
   // or a MAX_TOKENS cut mid-object. Without this the raw SyntaxError from
@@ -159,6 +157,13 @@ export async function smartAddChat(
     parsed.message = ''
   }
   parsed.todos = normalizeParsedTodos(parsed.todos)
+
+  if (data.usage) {
+    parsed.usage = {
+      promptTokens: data.usage.prompt_tokens ?? 0,
+      completionTokens: data.usage.completion_tokens ?? 0,
+    }
+  }
 
   return parsed
 }

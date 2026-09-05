@@ -7,11 +7,17 @@ import { useSettingsStore } from '@/stores/settings-store'
 import { listColorsFor } from '@/themes/list-color'
 import { typography } from '@/themes/typography'
 
+import type { CalendarEvent } from '@/features/calendar/types'
 import type { TodoList } from '@/features/lists/types'
 import type { Todo, TodoId } from '@/features/todos/types'
 
+type TimeGridColumn = {
+  todos: Todo[]
+  events?: CalendarEvent[]
+}
+
 type TimeGridProps = {
-  columns: { todos: Todo[] }[]
+  columns: TimeGridColumn[]
   columnHeaders?: string[]
   listsById: Record<string, TodoList>
   startHour?: number
@@ -46,7 +52,9 @@ export function TimeGrid({
 
   const allDayByColumn = columns.map((col) => col.todos.filter(isAllDay))
   const timedByColumn = columns.map((col) => col.todos.filter((t) => !isAllDay(t)))
-  const hasAnyAllDay = allDayByColumn.some((col) => col.length > 0)
+  const allDayEventsByColumn = columns.map((col) => (col.events ?? []).filter((e) => e.allDay))
+  const timedEventsByColumn = columns.map((col) => (col.events ?? []).filter((e) => !e.allDay))
+  const hasAnyAllDay = allDayByColumn.some((col) => col.length > 0) || allDayEventsByColumn.some((col) => col.length > 0)
 
   return (
     <ScrollView
@@ -150,6 +158,30 @@ export function TimeGrid({
                   </Pressable>
                 )
               })}
+              {allDayEventsByColumn[colIndex].map((event) => (
+                <View
+                  key={event.id}
+                  style={{
+                    backgroundColor: theme.color.surfaceSoft,
+                    borderRadius: theme.radius.sm,
+                    borderLeftWidth: 3,
+                    borderLeftColor: event.color || theme.color.accent,
+                    paddingHorizontal: theme.spacing.xs,
+                    paddingVertical: theme.spacing.micro,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...typography.meta,
+                      fontFamily: 'Manrope_500Medium',
+                      color: theme.color.text,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {event.title}
+                  </Text>
+                </View>
+              ))}
             </View>
           ))}
         </View>
@@ -244,6 +276,50 @@ export function TimeGrid({
                     {todo.title}
                   </Text>
                 </Pressable>
+              )
+            })}
+
+            {timedEventsByColumn[colIndex].map((event) => {
+              const start = new Date(event.startAt)
+              const end = new Date(event.endAt)
+              const eventHour = start.getHours() + start.getMinutes() / 60
+              if (eventHour < startHour || eventHour >= endHour) return null
+
+              const top = (eventHour - startHour) * hourHeight
+              const durationMs = end.getTime() - start.getTime()
+              const durationHours = Math.max(durationMs / 3_600_000, 0.5)
+              const height = Math.max(durationHours * hourHeight, BLOCK_HEIGHT)
+
+              return (
+                <View
+                  key={event.id}
+                  style={{
+                    position: 'absolute',
+                    top,
+                    left: 2,
+                    right: 2,
+                    height,
+                    backgroundColor: theme.color.surfaceSoft,
+                    borderRadius: theme.radius.sm,
+                    borderLeftWidth: 3,
+                    borderLeftColor: event.color || theme.color.accent,
+                    paddingHorizontal: theme.spacing.xs,
+                    paddingVertical: theme.spacing.micro,
+                    overflow: 'hidden',
+                    opacity: 0.85,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...typography.meta,
+                      fontFamily: 'Manrope_500Medium',
+                      color: theme.color.text,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {event.title}
+                  </Text>
+                </View>
               )
             })}
           </View>

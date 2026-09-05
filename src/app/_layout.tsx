@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { QuickAddModal } from '@/components/quick-add'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useDailyPlanNotification } from '@/hooks/use-daily-plan-notification'
 import { bootstrapApp } from '@/lib/bootstrap-app'
 import { setupNotificationHandler } from '@/lib/notifications'
 import { useListStore } from '@/stores/list-store'
@@ -28,6 +29,8 @@ export default function RootLayout() {
 
   const hasHydrated = useListStore((state) => state.hasHydrated)
   const { resolvedTheme } = useAppTheme()
+
+  useDailyPlanNotification()
 
   useEffect(() => {
     if (!hasHydrated) return

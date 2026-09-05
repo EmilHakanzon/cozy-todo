@@ -29,6 +29,7 @@ import {
   getOverdueTodos,
   getTodayTodos,
 } from '@/features/todos/selectors'
+import { toDateString } from '@/lib/date-utils'
 import { useAppTheme } from '@/hooks/use-app-theme'
 import { useDailyPlanChat } from '@/hooks/use-daily-plan-chat'
 import { useDailyPlanStore } from '@/stores/daily-plan-store'
@@ -121,7 +122,7 @@ export default function DailyPlanScreen() {
 
   const handleAddToToday = useCallback(
     (id: string) => {
-      const today = new Date().toISOString().split('T')[0]
+      const today = toDateString(new Date())
       updateTodo(id, { dueAt: today })
     },
     [updateTodo]

@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { toDateString } from '@/lib/date-utils'
 
 import {
   getActiveTodos,
+  getBacklogTodos,
+  getDailyPlanCounts,
+  getOverdueTodos,
   getActiveCountForList,
   getAllRootTodos,
   getCompletedTodos,
@@ -134,7 +139,7 @@ describe('getAllRootTodos', () => {
 
 describe('getTodayTodos', () => {
   it('returns todos due today', () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = toDateString(new Date())
     const todos = [
       makeTodo({ id: 'a', dueAt: `${today}T18:00:00.000Z` }),
       makeTodo({ id: 'b', dueAt: '2099-12-31T00:00:00.000Z' }),
@@ -147,7 +152,7 @@ describe('getTodayTodos', () => {
 
 describe('getUpcomingTodos', () => {
   it('returns todos due after today', () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = toDateString(new Date())
     const todos = [
       makeTodo({ id: 'a', dueAt: `${today}T18:00:00.000Z` }),
       makeTodo({ id: 'b', dueAt: '2099-12-31T00:00:00.000Z' }),
@@ -155,6 +160,84 @@ describe('getUpcomingTodos', () => {
     ]
     const result = getUpcomingTodos(todos)
     expect(result.map((t) => t.id)).toEqual(['b'])
+  })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+/**
+ * 00:30 lokal tid: i varje zon öster om UTC pekar UTC-dygnet fortfarande på
+ * gårdagen. Selektorerna måste följa användarens kalender, inte UTC:s.
+ */
+function freezeAtLocalMidnightish() {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 8, 4, 0, 30, 0))
+}
+
+describe('getOverdueTodos', () => {
+  it('mäter försening mot lokal dag, inte UTC-dag', () => {
+    freezeAtLocalMidnightish()
+    const igar = toDateString(new Date(2026, 8, 3))
+    const todosById = makeTodosById(
+      makeTodo({ id: 'forsenad', dueAt: `${igar}T09:00:00.000Z` }),
+    )
+
+    expect(getOverdueTodos(todosById).map((t) => t.id)).toEqual(['forsenad'])
+  })
+
+  it('utesluter klara, odaterade och barn-todos', () => {
+    freezeAtLocalMidnightish()
+    const igar = toDateString(new Date(2026, 8, 3))
+    const todosById = makeTodosById(
+      makeTodo({ id: 'forsenad', dueAt: `${igar}T09:00:00.000Z` }),
+      makeTodo({ id: 'klar', dueAt: `${igar}T09:00:00.000Z`, completedAt: '2026-09-03T10:00:00.000Z' }),
+      makeTodo({ id: 'odaterad', dueAt: null }),
+      makeTodo({ id: 'barn', parentId: 'forsenad', dueAt: `${igar}T09:00:00.000Z` }),
+    )
+
+    expect(getOverdueTodos(todosById).map((t) => t.id)).toEqual(['forsenad'])
+  })
+})
+
+describe('getTodayTodos', () => {
+  it('hittar dagens todo även när UTC redan bytt dygn', () => {
+    freezeAtLocalMidnightish()
+    const idag = toDateString(new Date(2026, 8, 4))
+    const todos = [makeTodo({ id: 'idag', dueAt: `${idag}T09:00:00.000Z` })]
+
+    expect(getTodayTodos(todos).map((t) => t.id)).toEqual(['idag'])
+  })
+})
+
+describe('getBacklogTodos', () => {
+  it('tar bara aktiva root-todos utan datum', () => {
+    const todosById = makeTodosById(
+      makeTodo({ id: 'utan-datum', position: 1 }),
+      makeTodo({ id: 'daterad', dueAt: '2026-09-04T09:00:00.000Z' }),
+      makeTodo({ id: 'klar', completedAt: '2026-09-01T00:00:00.000Z' }),
+      makeTodo({ id: 'barn', parentId: 'utan-datum' }),
+    )
+
+    expect(getBacklogTodos(todosById).map((t) => t.id)).toEqual(['utan-datum'])
+  })
+})
+
+describe('getDailyPlanCounts', () => {
+  it('räknar dagens aktiva och de försenade var för sig', () => {
+    freezeAtLocalMidnightish()
+    const idag = toDateString(new Date(2026, 8, 4))
+    const igar = toDateString(new Date(2026, 8, 3))
+    const todosById = makeTodosById(
+      makeTodo({ id: 'idag-1', dueAt: `${idag}T09:00:00.000Z` }),
+      makeTodo({ id: 'idag-2', dueAt: `${idag}T18:00:00.000Z` }),
+      makeTodo({ id: 'idag-klar', dueAt: `${idag}T08:00:00.000Z`, completedAt: `${idag}T08:30:00.000Z` }),
+      makeTodo({ id: 'forsenad', dueAt: `${igar}T09:00:00.000Z` }),
+      makeTodo({ id: 'odaterad', dueAt: null }),
+    )
+
+    expect(getDailyPlanCounts(todosById)).toEqual({ todayCount: 2, overdueCount: 1 })
   })
 })
 

@@ -5,6 +5,7 @@ import { SymbolView } from 'expo-symbols'
 import { FlatList } from 'react-native-gesture-handler'
 
 import { AgendaItem } from '@/components/agenda-item'
+import { CalendarEventItem } from '@/components/calendar-event-item'
 import { DateRangeNav } from '@/components/date-range-nav'
 import { DaySelector } from '@/components/day-selector'
 import { InlineQuickAdd } from '@/components/quick-add'
@@ -13,13 +14,14 @@ import { ScreenHeader } from '@/components/screen-header'
 import { SegmentedControl } from '@/components/segmented-control'
 import { SwipeableTodoItem } from '@/components/swipeable-todo-item'
 import { TimeGrid } from '@/components/time-grid'
+import { buildAgendaWithEvents, agendaItemKey } from '@/features/calendar/agenda'
 import {
-  buildAgendaSections,
   getTodosInDateRange,
   groupTodosByDate,
   getTodosForDate,
 } from '@/features/todos/selectors'
 import { useAppTheme } from '@/hooks/use-app-theme'
+import { useCalendarEvents } from '@/hooks/use-calendar-events'
 import { useMonthNavigation } from '@/hooks/use-month-navigation'
 import { useWeekNavigation } from '@/hooks/use-week-navigation'
 import { toDateString } from '@/lib/date-utils'
@@ -29,6 +31,7 @@ import { useTodoStore } from '@/stores/todo-store'
 import { typography } from '@/themes/typography'
 
 import type { SymbolViewProps } from 'expo-symbols'
+import type { CalendarEvent } from '@/features/calendar/types'
 import type { Todo } from '@/features/todos/types'
 
 type UpcomingView = 'agenda' | 'day' | 'week' | 'month'
@@ -36,6 +39,7 @@ type UpcomingView = 'agenda' | 'day' | 'week' | 'month'
 type MonthListItem =
   | { kind: 'summary'; dateStr: string; label: string; count: number }
   | { kind: 'todo'; todo: Todo }
+  | { kind: 'event'; event: CalendarEvent }
 
 const VIEW_SEGMENTS = [
   { key: 'agenda' as const, label: 'Agenda' },
@@ -67,16 +71,33 @@ export default function UpcomingScreen() {
     [todosById, week.weekStart, week.weekEnd],
   )
 
-  const agendaSections = useMemo(() => buildAgendaSections(weekTodos), [weekTodos])
+  const calendarEvents = useCalendarEvents(week.weekStart, week.weekEnd)
+
+  const agendaListItems = useMemo(
+    () => buildAgendaWithEvents(weekTodos, calendarEvents),
+    [weekTodos, calendarEvents],
+  )
 
   const dayTodos = useMemo(
     () => getTodosForDate(todosById, toDateString(week.selectedDay)),
     [todosById, week.selectedDay],
   )
 
+  const dayEvents = useMemo(
+    () => calendarEvents.filter((e) => e.date === toDateString(week.selectedDay)),
+    [calendarEvents, week.selectedDay],
+  )
+
   const weekColumns = useMemo(
-    () => week.weekDays.map((day) => ({ todos: getTodosForDate(todosById, toDateString(day)) })),
-    [week.weekDays, todosById],
+    () =>
+      week.weekDays.map((day) => {
+        const ds = toDateString(day)
+        return {
+          todos: getTodosForDate(todosById, ds),
+          events: calendarEvents.filter((e) => e.date === ds),
+        }
+      }),
+    [week.weekDays, todosById, calendarEvents],
   )
 
   const weekColumnHeaders = useMemo(
@@ -93,6 +114,8 @@ export default function UpcomingScreen() {
     [todosById, month.monthStart, month.monthEnd],
   )
 
+  const monthCalendarEvents = useCalendarEvents(month.monthStart, month.monthEnd)
+
   const monthTaskDots = useMemo(() => {
     const dots = new Map<string, number>()
     for (const todo of monthTodos) {
@@ -100,14 +123,21 @@ export default function UpcomingScreen() {
       const dateStr = todo.dueAt.split('T')[0]
       dots.set(dateStr, (dots.get(dateStr) ?? 0) + 1)
     }
+    for (const event of monthCalendarEvents) {
+      dots.set(event.date, (dots.get(event.date) ?? 0) + 1)
+    }
     return dots
-  }, [monthTodos])
+  }, [monthTodos, monthCalendarEvents])
 
   const monthDaySummaries = useMemo(() => {
     const grouped = groupTodosByDate(monthTodos)
+    for (const event of monthCalendarEvents) {
+      if (!grouped.has(event.date)) grouped.set(event.date, [])
+    }
     return [...grouped.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([dateStr, todos]) => {
+        const eventCount = monthCalendarEvents.filter((e) => e.date === dateStr).length
         const date = new Date(dateStr + 'T00:00:00')
         return {
           dateStr,
@@ -116,15 +146,21 @@ export default function UpcomingScreen() {
             day: 'numeric',
             weekday: 'short',
           }),
-          count: todos.length,
+          count: todos.length + eventCount,
         }
       })
-  }, [monthTodos])
+  }, [monthTodos, monthCalendarEvents])
 
   const selectedMonthDayTodos = useMemo(() => {
     if (!month.selectedMonthDay) return []
     return getTodosForDate(todosById, toDateString(month.selectedMonthDay))
   }, [todosById, month.selectedMonthDay])
+
+  const selectedMonthDayEvents = useMemo(() => {
+    if (!month.selectedMonthDay) return []
+    const ds = toDateString(month.selectedMonthDay)
+    return monthCalendarEvents.filter((e) => e.date === ds)
+  }, [monthCalendarEvents, month.selectedMonthDay])
 
   const handleTodoPress = useCallback(
     (id: string) => router.push({ pathname: '/todo/[todoId]', params: { todoId: id } }),
@@ -156,22 +192,23 @@ export default function UpcomingScreen() {
 
       {view === 'agenda' && (
         <FlatList
-          data={agendaSections}
-          keyExtractor={(item, index) =>
-            item.type === 'todo' ? item.todo.id : `header-${index}`
-          }
+          data={agendaListItems}
+          keyExtractor={agendaItemKey}
           contentContainerStyle={{
             paddingHorizontal: theme.spacing.lg,
             paddingBottom: 120,
           }}
           renderItem={({ item }) => {
-            if (item.type === 'header') {
+            if (item.kind === 'header') {
               return (
                 <AgendaSectionHeader
                   label={item.label}
                   count={item.count}
                 />
               )
+            }
+            if (item.kind === 'event') {
+              return <CalendarEventItem event={item.event} />
             }
             return <AgendaItem todo={item.todo} onToggle={toggleTodo} />
           }}
@@ -188,7 +225,7 @@ export default function UpcomingScreen() {
             <DaySelector days={week.weekDays} selectedDate={week.selectedDay} onSelect={week.setSelectedDay} />
           </View>
           <TimeGrid
-            columns={[{ todos: dayTodos }]}
+            columns={[{ todos: dayTodos, events: dayEvents }]}
             listsById={listsById}
             onToggle={toggleTodo}
           />
@@ -207,13 +244,18 @@ export default function UpcomingScreen() {
 
       {view === 'month' && (() => {
         const monthListItems: MonthListItem[] = month.selectedMonthDay
-          ? selectedMonthDayTodos.map((todo) => ({ kind: 'todo', todo }))
+          ? [
+              ...selectedMonthDayTodos.map((todo): MonthListItem => ({ kind: 'todo', todo })),
+              ...selectedMonthDayEvents.map((event): MonthListItem => ({ kind: 'event', event })),
+            ]
           : monthDaySummaries.map((s) => ({ kind: 'summary', ...s }))
 
         return (
           <FlatList
             data={monthListItems}
-            keyExtractor={(item) => (item.kind === 'summary' ? item.dateStr : item.todo.id)}
+            keyExtractor={(item) =>
+              item.kind === 'summary' ? item.dateStr : item.kind === 'todo' ? item.todo.id : item.event.id
+            }
             contentContainerStyle={{
               paddingHorizontal: theme.spacing.lg,
               paddingBottom: 120,
@@ -268,6 +310,9 @@ export default function UpcomingScreen() {
                     }}
                   />
                 )
+              }
+              if (item.kind === 'event') {
+                return <CalendarEventItem event={item.event} />
               }
               return (
                 <SwipeableTodoItem

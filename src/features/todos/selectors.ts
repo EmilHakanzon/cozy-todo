@@ -1,4 +1,4 @@
-import { formatDayHeader } from '@/lib/date-utils'
+import { formatDayHeader, toDateString } from '@/lib/date-utils'
 
 import { getChildren, sortByPosition } from './todo-tree'
 import type { Todo, TodoById, TodoId, TodoListId } from './types'
@@ -56,12 +56,12 @@ export function getAllRootTodos(todosById: TodoById): Todo[] {
 }
 
 export function getTodayTodos(todos: Todo[]): Todo[] {
-  const today = new Date().toISOString().split('T')[0]
+  const today = toDateString(new Date())
   return todos.filter((todo) => todo.dueAt?.startsWith(today))
 }
 
 export function getUpcomingTodos(todos: Todo[]): Todo[] {
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = toDateString(new Date())
   return todos.filter((todo) => {
     if (!todo.dueAt) return false
     return todo.dueAt.split('T')[0] > todayStr
@@ -144,6 +144,30 @@ export function buildAgendaSections(todos: Todo[]): AgendaSection[] {
   return sections
 }
 
+export function getOverdueTodos(todosById: TodoById): Todo[] {
+  const todayStr = toDateString(new Date())
+  return sortByPosition(
+    Object.values(todosById).filter(
+      (todo) =>
+        todo.parentId === null &&
+        todo.completedAt === null &&
+        todo.dueAt !== null &&
+        todo.dueAt.split('T')[0] < todayStr,
+    ),
+  )
+}
+
+export function getBacklogTodos(todosById: TodoById): Todo[] {
+  return sortByPosition(
+    Object.values(todosById).filter(
+      (todo) =>
+        todo.parentId === null &&
+        todo.completedAt === null &&
+        todo.dueAt === null,
+    ),
+  )
+}
+
 export function searchTodos(todosById: TodoById, query: string): Todo[] {
   const trimmed = query.trim().toLowerCase()
   if (!trimmed) return []
@@ -153,4 +177,14 @@ export function searchTodos(todosById: TodoById, query: string): Todo[] {
       todo.title.toLowerCase().includes(trimmed) ||
       todo.notes.toLowerCase().includes(trimmed),
   )
+}
+
+export function getDailyPlanCounts(todosById: TodoById): {
+  todayCount: number
+  overdueCount: number
+} {
+  return {
+    todayCount: getActiveTodos(getTodayTodos(getAllRootTodos(todosById))).length,
+    overdueCount: getOverdueTodos(todosById).length,
+  }
 }
