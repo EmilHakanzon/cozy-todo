@@ -15,7 +15,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.emilhakanzon.cozytodo"
+      "package": "com.emilhakanzon.cozytodo",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "output": "static",
